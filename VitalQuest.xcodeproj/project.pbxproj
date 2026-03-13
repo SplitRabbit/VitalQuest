@@ -1,0 +1,636 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0772F53173ECD5BEB153AFDA /* Mascot.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA873248846CE67FAF52AF5C /* Mascot.swift */; };
+		07B8EA375713ABDAAF3BDF3B /* StreakManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE25C5FF5576C1FC02CEEA0F /* StreakManager.swift */; };
+		0C3FB495D70C3A7C80F0B35D /* BaselineEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE5F9DE3A3E122538F8E3254 /* BaselineEngineTests.swift */; };
+		0DE482D3069DD9DDF7E249E8 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD7A1B170A65284CCF7FC891 /* ProfileView.swift */; };
+		0F2D82D749BF023BC99CC69D /* ScoringEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5EEA2A4F0C1403609D87FE /* ScoringEngineTests.swift */; };
+		1A5F56EB2DEAC187CA47E7F6 /* ScoresView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 065E07041B2014D9D168BD24 /* ScoresView.swift */; };
+		295F34719411DB9A7D76D2E8 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B47EC816E199D457A655F97A /* DashboardViewModel.swift */; };
+		2A3D0BC4119E0476FAB1BF46 /* Achievement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025C4B9199B4A2E25ACCBFD4 /* Achievement.swift */; };
+		2F034353245CC41B131D5217 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DFD74A563C2CBF25780141B /* HistoryView.swift */; };
+		31C98AC717A7337BE2BD9508 /* MockHealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A74C31E6EDA864770E94E52 /* MockHealthKitManager.swift */; };
+		34F9AEDA832A436068D8C3FB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B02652F6EB984E7AA8D6CDD /* ContentView.swift */; };
+		3E1D64A507251685EA84837C /* QuestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07BF6BB7256544707AF8CC0D /* QuestsView.swift */; };
+		4DC8C22F0C5179D77877F9B6 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01DA32D03AE860273040039A /* DashboardView.swift */; };
+		50BFFE079A8DCE6D1F754A7A /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F907BC6BC86F569AF4BE6E /* UserProfile.swift */; };
+		59F220F3E430861DB4894004 /* MetricBaseline.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC468D00F49EEBBD23585D95 /* MetricBaseline.swift */; };
+		6D3641AD70A13393FC034E43 /* MetricRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 439A34B4A659C696B3E6FD49 /* MetricRow.swift */; };
+		70D514B344AFCD853813F488 /* StreakBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0567E7F07486E53789CE853A /* StreakBadge.swift */; };
+		7354889ED1373F52A7ABF389 /* QuestCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F370E52BACEF9578CE10BC71 /* QuestCard.swift */; };
+		7652C3D0800B810E0F73E842 /* XPBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACBC1AA80F0B1BE7D424B174 /* XPBar.swift */; };
+		8222E05831790E6305E3A5A2 /* ScoreRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBD739901AE6941ECFD4C778 /* ScoreRing.swift */; };
+		8239AEC3323F6DBC7E8E4811 /* ScoringEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B286DB1DAA59F137F261F78 /* ScoringEngine.swift */; };
+		8BE6BE83FAB117735CFF9AC8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D981993DE8CF976A8AA4507C /* Assets.xcassets */; };
+		90475EFAED93CCD801C5CE22 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 233CFCF02CB96375A1083F18 /* Theme.swift */; };
+		926D9FAB76866B3F8E051890 /* VitalQuestApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2BB70370E969EB092DC775 /* VitalQuestApp.swift */; };
+		A3594DEABC79D671CC9F7C50 /* StatisticsHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8624F8461821ECAA7FB058E3 /* StatisticsHelpers.swift */; };
+		A44D2AEDEF7E0C4A490B23B2 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24AE59F31D814C7889DFDB92 /* HomeView.swift */; };
+		BD534DD45C667937A917A7D9 /* DailySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC0D8D423A5174FAD7A254A4 /* DailySnapshot.swift */; };
+		C2893184FA099333003B06FD /* QuestEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF9E9873BBC490D0680B490 /* QuestEngine.swift */; };
+		C3426E774DEC46273FB3C88D /* BaselineEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8992E7A72C801824A25EEED5 /* BaselineEngine.swift */; };
+		DD0C4BD1C96E5DF68D0D1F76 /* XPEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F830DBE381C1D3D30FACEB46 /* XPEngine.swift */; };
+		EE7295E2A4BC8C41F815B3DB /* Quest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A381B5E38B2034A38BC24CF4 /* Quest.swift */; };
+		F403D18FF74AE8FF1576FEE1 /* PreviewHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36ED122393170691E698A7E8 /* PreviewHelpers.swift */; };
+		F9B7945413DFF40AE9490839 /* HealthKitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A02B559AD1F79FA46E2AB137 /* HealthKitManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AED5D51E3BA6536BC0C75958 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 67CA9E7F73D7F1A3BDDB5593 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACF58D80563E6E91E77658B1;
+			remoteInfo = VitalQuest;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		01DA32D03AE860273040039A /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		025C4B9199B4A2E25ACCBFD4 /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
+		0567E7F07486E53789CE853A /* StreakBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakBadge.swift; sourceTree = "<group>"; };
+		065E07041B2014D9D168BD24 /* ScoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoresView.swift; sourceTree = "<group>"; };
+		07BF6BB7256544707AF8CC0D /* QuestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestsView.swift; sourceTree = "<group>"; };
+		233CFCF02CB96375A1083F18 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		24AE59F31D814C7889DFDB92 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		36ED122393170691E698A7E8 /* PreviewHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewHelpers.swift; sourceTree = "<group>"; };
+		439A34B4A659C696B3E6FD49 /* MetricRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricRow.swift; sourceTree = "<group>"; };
+		46C5BAB4AC8F8A38E43BC026 /* VitalQuest.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VitalQuest.entitlements; sourceTree = "<group>"; };
+		4B286DB1DAA59F137F261F78 /* ScoringEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoringEngine.swift; sourceTree = "<group>"; };
+		5A74C31E6EDA864770E94E52 /* MockHealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockHealthKitManager.swift; sourceTree = "<group>"; };
+		72B923F5BD5C36A5FDC8026E /* VitalQuest.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = VitalQuest.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DFD74A563C2CBF25780141B /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		80F907BC6BC86F569AF4BE6E /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		8624F8461821ECAA7FB058E3 /* StatisticsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsHelpers.swift; sourceTree = "<group>"; };
+		8992E7A72C801824A25EEED5 /* BaselineEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaselineEngine.swift; sourceTree = "<group>"; };
+		8B02652F6EB984E7AA8D6CDD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		8CF9E9873BBC490D0680B490 /* QuestEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestEngine.swift; sourceTree = "<group>"; };
+		99BED045C5AFE209EF0565EC /* VitalQuestTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = VitalQuestTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A02B559AD1F79FA46E2AB137 /* HealthKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitManager.swift; sourceTree = "<group>"; };
+		A381B5E38B2034A38BC24CF4 /* Quest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Quest.swift; sourceTree = "<group>"; };
+		ACBC1AA80F0B1BE7D424B174 /* XPBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPBar.swift; sourceTree = "<group>"; };
+		B47EC816E199D457A655F97A /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
+		BA2BB70370E969EB092DC775 /* VitalQuestApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VitalQuestApp.swift; sourceTree = "<group>"; };
+		BC0D8D423A5174FAD7A254A4 /* DailySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailySnapshot.swift; sourceTree = "<group>"; };
+		CE25C5FF5576C1FC02CEEA0F /* StreakManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakManager.swift; sourceTree = "<group>"; };
+		CE5F9DE3A3E122538F8E3254 /* BaselineEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaselineEngineTests.swift; sourceTree = "<group>"; };
+		D981993DE8CF976A8AA4507C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DA873248846CE67FAF52AF5C /* Mascot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Mascot.swift; sourceTree = "<group>"; };
+		DBD739901AE6941ECFD4C778 /* ScoreRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoreRing.swift; sourceTree = "<group>"; };
+		DC468D00F49EEBBD23585D95 /* MetricBaseline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricBaseline.swift; sourceTree = "<group>"; };
+		DE5EEA2A4F0C1403609D87FE /* ScoringEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoringEngineTests.swift; sourceTree = "<group>"; };
+		F370E52BACEF9578CE10BC71 /* QuestCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestCard.swift; sourceTree = "<group>"; };
+		F830DBE381C1D3D30FACEB46 /* XPEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XPEngine.swift; sourceTree = "<group>"; };
+		FD7A1B170A65284CCF7FC891 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		26D4300920D50B8927820EB5 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				DA873248846CE67FAF52AF5C /* Mascot.swift */,
+				439A34B4A659C696B3E6FD49 /* MetricRow.swift */,
+				F370E52BACEF9578CE10BC71 /* QuestCard.swift */,
+				DBD739901AE6941ECFD4C778 /* ScoreRing.swift */,
+				0567E7F07486E53789CE853A /* StreakBadge.swift */,
+				233CFCF02CB96375A1083F18 /* Theme.swift */,
+				ACBC1AA80F0B1BE7D424B174 /* XPBar.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		45115F3D4934F995FDD485F3 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				01DA32D03AE860273040039A /* DashboardView.swift */,
+				24AE59F31D814C7889DFDB92 /* HomeView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		49FDB0576E31E9F839070294 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				025C4B9199B4A2E25ACCBFD4 /* Achievement.swift */,
+				BC0D8D423A5174FAD7A254A4 /* DailySnapshot.swift */,
+				DC468D00F49EEBBD23585D95 /* MetricBaseline.swift */,
+				A381B5E38B2034A38BC24CF4 /* Quest.swift */,
+				80F907BC6BC86F569AF4BE6E /* UserProfile.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		64220D6B5902871E401721C3 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				8992E7A72C801824A25EEED5 /* BaselineEngine.swift */,
+				A02B559AD1F79FA46E2AB137 /* HealthKitManager.swift */,
+				5A74C31E6EDA864770E94E52 /* MockHealthKitManager.swift */,
+				8CF9E9873BBC490D0680B490 /* QuestEngine.swift */,
+				4B286DB1DAA59F137F261F78 /* ScoringEngine.swift */,
+				CE25C5FF5576C1FC02CEEA0F /* StreakManager.swift */,
+				F830DBE381C1D3D30FACEB46 /* XPEngine.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		708CC92C46409541E07850CE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				72B923F5BD5C36A5FDC8026E /* VitalQuest.app */,
+				99BED045C5AFE209EF0565EC /* VitalQuestTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		71614682F93EDF6531D65CB6 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				8B02652F6EB984E7AA8D6CDD /* ContentView.swift */,
+				BA2BB70370E969EB092DC775 /* VitalQuestApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		7B254E8E209723A07A9E6058 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				B47EC816E199D457A655F97A /* DashboardViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		811A55DA71F53CCC706F71FB /* History */ = {
+			isa = PBXGroup;
+			children = (
+				7DFD74A563C2CBF25780141B /* HistoryView.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		914531C9E38E122A8E6C3C80 /* VitalQuestTests */ = {
+			isa = PBXGroup;
+			children = (
+				CE5F9DE3A3E122538F8E3254 /* BaselineEngineTests.swift */,
+				DE5EEA2A4F0C1403609D87FE /* ScoringEngineTests.swift */,
+			);
+			path = VitalQuestTests;
+			sourceTree = "<group>";
+		};
+		9E3859D3D1BDE29EE6BD844E /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				FD7A1B170A65284CCF7FC891 /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		A720BCD907EAC7F31C17A57E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				26D4300920D50B8927820EB5 /* Components */,
+				45115F3D4934F995FDD485F3 /* Dashboard */,
+				811A55DA71F53CCC706F71FB /* History */,
+				9E3859D3D1BDE29EE6BD844E /* Profile */,
+				ACED2097D79360C31771F61E /* Quests */,
+				C7BDD96803386BF1E53EA46C /* Scores */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		ACED2097D79360C31771F61E /* Quests */ = {
+			isa = PBXGroup;
+			children = (
+				07BF6BB7256544707AF8CC0D /* QuestsView.swift */,
+			);
+			path = Quests;
+			sourceTree = "<group>";
+		};
+		C7BDD96803386BF1E53EA46C /* Scores */ = {
+			isa = PBXGroup;
+			children = (
+				065E07041B2014D9D168BD24 /* ScoresView.swift */,
+			);
+			path = Scores;
+			sourceTree = "<group>";
+		};
+		E6C7C9C0B88A518A2AF6140C /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				36ED122393170691E698A7E8 /* PreviewHelpers.swift */,
+				8624F8461821ECAA7FB058E3 /* StatisticsHelpers.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		E99145149EC815C3E0E30771 /* VitalQuest */ = {
+			isa = PBXGroup;
+			children = (
+				D981993DE8CF976A8AA4507C /* Assets.xcassets */,
+				46C5BAB4AC8F8A38E43BC026 /* VitalQuest.entitlements */,
+				71614682F93EDF6531D65CB6 /* App */,
+				49FDB0576E31E9F839070294 /* Models */,
+				64220D6B5902871E401721C3 /* Services */,
+				E6C7C9C0B88A518A2AF6140C /* Utilities */,
+				7B254E8E209723A07A9E6058 /* ViewModels */,
+				A720BCD907EAC7F31C17A57E /* Views */,
+			);
+			path = VitalQuest;
+			sourceTree = "<group>";
+		};
+		EE866A7E1F7D1073765ACAB3 = {
+			isa = PBXGroup;
+			children = (
+				E99145149EC815C3E0E30771 /* VitalQuest */,
+				914531C9E38E122A8E6C3C80 /* VitalQuestTests */,
+				708CC92C46409541E07850CE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		11A93B8B4A7BD03F50066D2E /* VitalQuestTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2B056D95516C62E80DAC3010 /* Build configuration list for PBXNativeTarget "VitalQuestTests" */;
+			buildPhases = (
+				A9EC69991B263D88FD305583 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BACF412725F2E7ED42395746 /* PBXTargetDependency */,
+			);
+			name = VitalQuestTests;
+			packageProductDependencies = (
+			);
+			productName = VitalQuestTests;
+			productReference = 99BED045C5AFE209EF0565EC /* VitalQuestTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		ACF58D80563E6E91E77658B1 /* VitalQuest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8F657F70FB52AE67BA15530 /* Build configuration list for PBXNativeTarget "VitalQuest" */;
+			buildPhases = (
+				C7F888BF17E03319A448CEE8 /* Sources */,
+				83EAF68BF594EEC09876D0DE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VitalQuest;
+			packageProductDependencies = (
+			);
+			productName = VitalQuest;
+			productReference = 72B923F5BD5C36A5FDC8026E /* VitalQuest.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		67CA9E7F73D7F1A3BDDB5593 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 55AACF6ED054E8F8C687B9D0 /* Build configuration list for PBXProject "VitalQuest" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = EE866A7E1F7D1073765ACAB3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 708CC92C46409541E07850CE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				ACF58D80563E6E91E77658B1 /* VitalQuest */,
+				11A93B8B4A7BD03F50066D2E /* VitalQuestTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		83EAF68BF594EEC09876D0DE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8BE6BE83FAB117735CFF9AC8 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A9EC69991B263D88FD305583 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C3FB495D70C3A7C80F0B35D /* BaselineEngineTests.swift in Sources */,
+				0F2D82D749BF023BC99CC69D /* ScoringEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C7F888BF17E03319A448CEE8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2A3D0BC4119E0476FAB1BF46 /* Achievement.swift in Sources */,
+				C3426E774DEC46273FB3C88D /* BaselineEngine.swift in Sources */,
+				34F9AEDA832A436068D8C3FB /* ContentView.swift in Sources */,
+				BD534DD45C667937A917A7D9 /* DailySnapshot.swift in Sources */,
+				4DC8C22F0C5179D77877F9B6 /* DashboardView.swift in Sources */,
+				295F34719411DB9A7D76D2E8 /* DashboardViewModel.swift in Sources */,
+				F9B7945413DFF40AE9490839 /* HealthKitManager.swift in Sources */,
+				2F034353245CC41B131D5217 /* HistoryView.swift in Sources */,
+				A44D2AEDEF7E0C4A490B23B2 /* HomeView.swift in Sources */,
+				0772F53173ECD5BEB153AFDA /* Mascot.swift in Sources */,
+				59F220F3E430861DB4894004 /* MetricBaseline.swift in Sources */,
+				6D3641AD70A13393FC034E43 /* MetricRow.swift in Sources */,
+				31C98AC717A7337BE2BD9508 /* MockHealthKitManager.swift in Sources */,
+				F403D18FF74AE8FF1576FEE1 /* PreviewHelpers.swift in Sources */,
+				0DE482D3069DD9DDF7E249E8 /* ProfileView.swift in Sources */,
+				EE7295E2A4BC8C41F815B3DB /* Quest.swift in Sources */,
+				7354889ED1373F52A7ABF389 /* QuestCard.swift in Sources */,
+				C2893184FA099333003B06FD /* QuestEngine.swift in Sources */,
+				3E1D64A507251685EA84837C /* QuestsView.swift in Sources */,
+				8222E05831790E6305E3A5A2 /* ScoreRing.swift in Sources */,
+				1A5F56EB2DEAC187CA47E7F6 /* ScoresView.swift in Sources */,
+				8239AEC3323F6DBC7E8E4811 /* ScoringEngine.swift in Sources */,
+				A3594DEABC79D671CC9F7C50 /* StatisticsHelpers.swift in Sources */,
+				70D514B344AFCD853813F488 /* StreakBadge.swift in Sources */,
+				07B8EA375713ABDAAF3BDF3B /* StreakManager.swift in Sources */,
+				90475EFAED93CCD801C5CE22 /* Theme.swift in Sources */,
+				50BFFE079A8DCE6D1F754A7A /* UserProfile.swift in Sources */,
+				926D9FAB76866B3F8E051890 /* VitalQuestApp.swift in Sources */,
+				7652C3D0800B810E0F73E842 /* XPBar.swift in Sources */,
+				DD0C4BD1C96E5DF68D0D1F76 /* XPEngine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BACF412725F2E7ED42395746 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ACF58D80563E6E91E77658B1 /* VitalQuest */;
+			targetProxy = AED5D51E3BA6536BC0C75958 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		125DF4F6C55CB0A80FB0A65B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE = YES;
+				SWIFT_UPCOMING_FEATURE_FORWARD_TRAILING_CLOSURES = YES;
+				SWIFT_VERSION = 5;
+			};
+			name = Release;
+		};
+		4D43E1E408897E74D03A436D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.vitalquest.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VitalQuest.app/VitalQuest";
+			};
+			name = Debug;
+		};
+		8A58244A494199DB703CCCC4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = VitalQuest/VitalQuest.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "VitalQuest uses your health data to calculate personalized recovery, sleep, activity, and readiness scores.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "VitalQuest needs write access to log your health activities.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vitalquest.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		997922A47E45986C32D487A2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.vitalquest.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VitalQuest.app/VitalQuest";
+			};
+			name = Release;
+		};
+		9A6DD656DAA23A5D4733DCB0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = VitalQuest/VitalQuest.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "VitalQuest uses your health data to calculate personalized recovery, sleep, activity, and readiness scores.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "VitalQuest needs write access to log your health activities.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vitalquest.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EAAC3CE5D1F612C9FFCB2FC7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_CONCISE_MAGIC_FILE = YES;
+				SWIFT_UPCOMING_FEATURE_FORWARD_TRAILING_CLOSURES = YES;
+				SWIFT_VERSION = 5;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2B056D95516C62E80DAC3010 /* Build configuration list for PBXNativeTarget "VitalQuestTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4D43E1E408897E74D03A436D /* Debug */,
+				997922A47E45986C32D487A2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		55AACF6ED054E8F8C687B9D0 /* Build configuration list for PBXProject "VitalQuest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EAAC3CE5D1F612C9FFCB2FC7 /* Debug */,
+				125DF4F6C55CB0A80FB0A65B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D8F657F70FB52AE67BA15530 /* Build configuration list for PBXNativeTarget "VitalQuest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9A6DD656DAA23A5D4733DCB0 /* Debug */,
+				8A58244A494199DB703CCCC4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 67CA9E7F73D7F1A3BDDB5593 /* Project object */;
+}

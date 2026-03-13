@@ -28,6 +28,10 @@ final class UserProfile {
     var sleepGoalHours: Double
     var exerciseGoalMinutes: Double
 
+    // MARK: - Metric Card Preferences
+    /// IDs of optional metrics the user has enabled (e.g. "vo2Max", "bodyFat", "distance")
+    var enabledOptionalMetrics: [String]
+
     init() {
         self.id = "main"
         self.totalXP = 0
@@ -45,6 +49,7 @@ final class UserProfile {
         self.calorieGoal = 500
         self.sleepGoalHours = 8.0
         self.exerciseGoalMinutes = 30
+        self.enabledOptionalMetrics = []
     }
 
     // MARK: - Level System

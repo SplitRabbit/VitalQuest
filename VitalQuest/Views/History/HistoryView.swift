@@ -15,6 +15,7 @@ struct HistoryView: View {
         case steps = "Steps"
         case hrv = "HRV"
         case rhr = "Resting HR"
+        case weight = "Weight"
 
         var color: Color {
             switch self {
@@ -24,6 +25,7 @@ struct HistoryView: View {
             case .steps: .vqBlue
             case .hrv: .vqOrange
             case .rhr: .vqPink
+            case .weight: .vqGreen
             }
         }
 
@@ -35,6 +37,7 @@ struct HistoryView: View {
             case .steps: "figure.walk"
             case .hrv: "waveform.path.ecg"
             case .rhr: "heart.fill"
+            case .weight: "scalemass.fill"
             }
         }
     }
@@ -69,7 +72,7 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    ProfileButton()
+                    ProfileButton(compact: true)
                 }
             }
         }
@@ -181,8 +184,8 @@ struct HistoryView: View {
 
             let calendar = Calendar.current
             let today = calendar.startOfDay(for: Date())
-            let days = (0..<28).map { offset in
-                calendar.date(byAdding: .day, value: -offset, to: today)!
+            let days = (0..<28).compactMap { offset in
+                calendar.date(byAdding: .day, value: -offset, to: today)
             }.reversed()
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 4) {
@@ -272,6 +275,9 @@ struct HistoryView: View {
             if let hrv = snap.hrvSDNN {
                 MetricRow(icon: "waveform.path.ecg", label: "HRV", value: "\(Int(hrv)) ms", color: .vqPurple)
             }
+            if let weight = snap.bodyMass {
+                MetricRow(icon: "scalemass.fill", label: "Weight", value: String(format: "%.1f kg", weight), color: .vqGreen)
+            }
         }
         .vqGlowCard(color: selectedMetric.color)
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -292,6 +298,7 @@ struct HistoryView: View {
         case .steps: return Double(snap.steps)
         case .hrv: return snap.hrvSDNN
         case .rhr: return snap.restingHeartRate
+        case .weight: return snap.bodyMass
         }
     }
 
@@ -313,6 +320,7 @@ struct HistoryView: View {
         case .steps: return "\(Int(value))"
         case .hrv: return "\(Int(value)) ms"
         case .rhr: return "\(Int(value)) bpm"
+        case .weight: return String(format: "%.1f kg", value)
         default: return "\(Int(value))"
         }
     }
@@ -328,6 +336,7 @@ struct HistoryView: View {
         case .steps: 15000
         case .hrv: 80
         case .rhr: 100
+        case .weight: 120
         default: 100
         }
         let intensity = min(value / maxVal, 1.0)

@@ -79,16 +79,40 @@ struct CustomTabBar: View {
 
 /// Self-contained profile button that presents ProfileView as a sheet
 struct ProfileButton: View {
+    var compact: Bool = false
     @State private var showProfile = false
 
     var body: some View {
         Button {
             showProfile = true
         } label: {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(Color.vqGreen)
-                .symbolRenderingMode(.hierarchical)
+            if compact {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(Color.vqGreen)
+                    .symbolRenderingMode(.hierarchical)
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.vqGreen)
+                        .symbolRenderingMode(.hierarchical)
+
+                    Text("Profile")
+                        .font(.vqCaption)
+                        .foregroundStyle(Color.vqTextSecondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.vqGreen.opacity(0.12))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.vqGreen.opacity(0.25), lineWidth: 1)
+                )
+            }
         }
         .sheet(isPresented: $showProfile) {
             NavigationStack {

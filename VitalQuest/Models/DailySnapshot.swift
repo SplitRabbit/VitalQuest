@@ -25,6 +25,11 @@ final class DailySnapshot {
     var oxygenSaturation: Double?
     var respiratoryRate: Double?
     var wristTemperature: Double?
+    var bodyMass: Double? // Weight in kg
+    var bodyFatPercentage: Double?
+    var distanceWalkingRunning: Double? // in meters
+    var flightsClimbed: Int?
+    var mindfulMinutes: Double?
     var workoutCount: Int
     var workoutTypes: [String]
 

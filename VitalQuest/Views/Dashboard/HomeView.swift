@@ -4,12 +4,21 @@ import Charts
 
 struct HomeView: View {
     @Environment(HealthKitManager.self) private var healthKitManager
+    @Environment(MockHealthKitManager.self) private var mockHealthKitManager
     @Environment(ScoringEngine.self) private var scoringEngine
     @Environment(BaselineEngine.self) private var baselineEngine
     @Environment(XPEngine.self) private var xpEngine
     @Environment(StreakManager.self) private var streakManager
     @Environment(QuestEngine.self) private var questEngine
     @Environment(\.modelContext) private var modelContext
+
+    private var activeProvider: HealthKitDataProvider {
+        #if targetEnvironment(simulator)
+        return mockHealthKitManager
+        #else
+        return healthKitManager
+        #endif
+    }
 
     @State private var viewModel = DashboardViewModel()
     @State private var expandedScore: String?
@@ -30,6 +39,9 @@ struct HomeView: View {
         }
     }
 
+    @State private var showMetricPicker = false
+    @State private var showSproutChat = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -37,23 +49,43 @@ struct HomeView: View {
 
                 ScrollView {
                     VStack(spacing: 20) {
+                        // Top bar: streak left, XP center, profile right
+                        ZStack {
+                            // Center: XP bar
+                            if let profile = viewModel.profile {
+                                ToolbarXPBar(
+                                    level: profile.level,
+                                    title: profile.title,
+                                    progress: profile.levelProgress,
+                                    xpToNext: profile.xpToNextLevel
+                                )
+                            }
+
+                            // Left + Right
+                            HStack {
+                                if let profile = viewModel.profile {
+                                    StreakBadge(streak: profile.currentStreak, freezes: profile.streakFreezes, compact: true)
+                                }
+                                Spacer()
+                                ProfileButton()
+                            }
+                        }
+                        .padding(.top, 8)
+
                         headerRow
                             .slideIn(appeared: appeared, delay: 0)
-
-                        xpSection
-                            .slideIn(appeared: appeared, delay: 0.05)
 
                         scoresSection
                             .slideIn(appeared: appeared, delay: 0.1)
 
-                        metricsStrip
+                        recentChartsSection
                             .slideIn(appeared: appeared, delay: 0.2)
 
-                        recentChartsSection
-                            .slideIn(appeared: appeared, delay: 0.25)
+                        DailyLogCard()
+                            .slideIn(appeared: appeared, delay: 0.3)
 
                         questsSection
-                            .slideIn(appeared: appeared, delay: 0.3)
+                            .slideIn(appeared: appeared, delay: 0.4)
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 40)
@@ -68,16 +100,17 @@ struct HomeView: View {
                         .allowsHitTesting(false)
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    ProfileButton()
-                }
+            .navigationBarHidden(true)
+            .sheet(isPresented: $showMetricPicker) {
+                MetricPickerSheet(profile: viewModel.profile)
+            }
+            .sheet(isPresented: $showSproutChat) {
+                SproutChatView(snapshot: viewModel.todaySnapshot)
             }
             .task {
                 viewModel.configure(
                     modelContext: modelContext,
-                    healthKitManager: healthKitManager,
+                    healthKitManager: activeProvider,
                     scoringEngine: scoringEngine,
                     baselineEngine: baselineEngine,
                     xpEngine: xpEngine,
@@ -112,29 +145,11 @@ struct HomeView: View {
                     .foregroundStyle(Color.vqTextSecondary.opacity(0.7))
             }
             Spacer()
-            if let profile = viewModel.profile {
-                StreakBadge(streak: profile.currentStreak, freezes: profile.streakFreezes, compact: true)
-            }
             if viewModel.isLoading {
                 ProgressView().tint(.vqCyan)
             }
         }
         .padding(.top, 4)
-    }
-
-    // MARK: - XP bar
-
-    private var xpSection: some View {
-        Group {
-            if let profile = viewModel.profile {
-                XPBar(
-                    level: profile.level,
-                    progress: profile.levelProgress,
-                    xpToNext: profile.xpToNextLevel,
-                    title: profile.title
-                )
-            }
-        }
     }
 
     // MARK: - Three scores as horizontal bar chart
@@ -146,20 +161,26 @@ struct HomeView: View {
         let tier = DailySnapshot.scoreTier(avgScore)
 
         return VStack(spacing: 14) {
-            // Mascot + speech
+            // Mascot + speech (tappable to open chat)
             ZStack(alignment: .topTrailing) {
-                HStack(spacing: 6) {
-                    Mascot(mood: mascotMood, size: 36)
-                    Text(mascotSpeech(tier))
-                        .font(.vqBody)
-                        .foregroundStyle(Color.vqTextSecondary)
+                Button {
+                    showSproutChat = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Mascot(mood: mascotMood, size: 36)
+                        Text(mascotSpeech(tier))
+                            .font(.vqBody)
+                            .foregroundStyle(Color.vqTextSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.vqTextPrimary.opacity(0.04))
+                    )
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.vqTextPrimary.opacity(0.04))
-                )
+                .buttonStyle(.plain)
 
                 if avgScore >= 80 {
                     FloatingHearts(count: 3)
@@ -255,105 +276,118 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Today's key metrics
+    // MARK: - Metric cards with connected icon strip
 
-    private var metricsStrip: some View {
-        let snap = viewModel.todaySnapshot
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                if let snap {
-                    MetricPill(icon: "figure.walk", label: "Steps", value: formatNumber(snap.steps), color: .vqCyan)
-                    MetricPill(icon: "flame.fill", label: "Cal", value: "\(Int(snap.activeCalories))", color: .vqPink)
-                    MetricPill(icon: "figure.run", label: "Move", value: "\(Int(snap.exerciseMinutes))m", color: .vqGreen)
-                    if let rhr = snap.restingHeartRate {
-                        MetricPill(icon: "heart.fill", label: "RHR", value: "\(Int(rhr))", color: .vqOrange)
-                    }
-                    if let hrv = snap.hrvSDNN {
-                        MetricPill(icon: "waveform.path.ecg", label: "HRV", value: "\(Int(hrv))", color: .vqBlue)
-                    }
-                    if let sleep = snap.sleepDurationMinutes {
-                        let h = Int(sleep) / 60, m = Int(sleep) % 60
-                        MetricPill(icon: "moon.fill", label: "Sleep", value: "\(h)h\(m)m", color: .vqBlue)
-                    }
-                }
-            }
+    private var metricCards: [MetricCardData] {
+        let snaps = viewModel.recentSnapshots
+        let enabledOptional = Set(viewModel.profile?.enabledOptionalMetrics ?? [])
+
+        // Default cards (always shown)
+        var cards: [MetricCardData] = [
+            MetricCardData(
+                id: "weight", title: "Weight", icon: "scalemass.fill", color: .vqGreen, unit: "kg",
+                data: snaps.compactMap { s in s.bodyMass.map { (s.date, $0) } },
+                latestValue: snaps.last?.bodyMass, useBars: false, higherIsBetter: false
+            ),
+            MetricCardData(
+                id: "rhr", title: "Resting Heart Rate", icon: "heart.fill", color: .vqOrange, unit: "bpm",
+                data: snaps.compactMap { s in s.restingHeartRate.map { (s.date, $0) } },
+                latestValue: snaps.last?.restingHeartRate, useBars: false, higherIsBetter: false
+            ),
+            MetricCardData(
+                id: "hrv", title: "Heart Rate Variability", icon: "waveform.path.ecg", color: .vqPurple, unit: "ms",
+                data: snaps.compactMap { s in s.hrvSDNN.map { (s.date, $0) } },
+                latestValue: snaps.last?.hrvSDNN, useBars: false
+            ),
+            MetricCardData(
+                id: "steps", title: "Steps", icon: "figure.walk", color: .vqCyan, unit: "",
+                data: snaps.map { ($0.date, Double($0.steps)) },
+                latestValue: snaps.last.map { Double($0.steps) }, useBars: true
+            ),
+            MetricCardData(
+                id: "sleep", title: "Sleep", icon: "moon.stars.fill", color: .vqBlue, unit: "hrs",
+                data: snaps.compactMap { s in s.sleepDurationMinutes.map { (s.date, $0 / 60.0) } },
+                latestValue: snaps.last?.sleepDurationMinutes.map { $0 / 60.0 }, useBars: false
+            ),
+            MetricCardData(
+                id: "calories", title: "Active Calories", icon: "flame.fill", color: .vqPink, unit: "kcal",
+                data: snaps.map { ($0.date, $0.activeCalories) },
+                latestValue: snaps.last.map { $0.activeCalories }, useBars: true
+            ),
+            MetricCardData(
+                id: "exercise", title: "Exercise", icon: "figure.run", color: .vqGreen, unit: "min",
+                data: snaps.map { ($0.date, $0.exerciseMinutes) },
+                latestValue: snaps.last.map { $0.exerciseMinutes }, useBars: true
+            ),
+        ]
+
+        // Optional cards (user-enabled)
+        if enabledOptional.contains("distance") {
+            cards.append(MetricCardData(
+                id: "distance", title: "Distance", icon: "figure.walk.motion", color: .vqCyan, unit: "km",
+                data: snaps.compactMap { s in s.distanceWalkingRunning.map { (s.date, $0 / 1000.0) } },
+                latestValue: snaps.last?.distanceWalkingRunning.map { $0 / 1000.0 }, useBars: false
+            ))
         }
+        if enabledOptional.contains("flights") {
+            cards.append(MetricCardData(
+                id: "flights", title: "Flights Climbed", icon: "figure.stairs", color: .vqOrange, unit: "",
+                data: snaps.compactMap { s in s.flightsClimbed.map { (s.date, Double($0)) } },
+                latestValue: snaps.last?.flightsClimbed.map { Double($0) }, useBars: true
+            ))
+        }
+        if enabledOptional.contains("bodyFat") {
+            cards.append(MetricCardData(
+                id: "bodyFat", title: "Body Fat", icon: "percent", color: .vqPink, unit: "%",
+                data: snaps.compactMap { s in s.bodyFatPercentage.map { (s.date, $0 * 100) } },
+                latestValue: snaps.last?.bodyFatPercentage.map { $0 * 100 }, useBars: false, higherIsBetter: false
+            ))
+        }
+        if enabledOptional.contains("mindful") {
+            cards.append(MetricCardData(
+                id: "mindful", title: "Mindful Minutes", icon: "brain.head.profile.fill", color: .vqPurple, unit: "min",
+                data: snaps.compactMap { s in s.mindfulMinutes.map { (s.date, $0) } },
+                latestValue: snaps.last?.mindfulMinutes, useBars: true
+            ))
+        }
+        if enabledOptional.contains("vo2Max") {
+            cards.append(MetricCardData(
+                id: "vo2Max", title: "VO2 Max", icon: "lungs.fill", color: .vqBlue, unit: "mL/kg/min",
+                data: snaps.compactMap { s in s.vo2Max.map { (s.date, $0) } },
+                latestValue: snaps.last?.vo2Max, useBars: false
+            ))
+        }
+        if enabledOptional.contains("spo2") {
+            cards.append(MetricCardData(
+                id: "spo2", title: "Blood Oxygen", icon: "drop.fill", color: .vqOrange, unit: "%",
+                data: snaps.compactMap { s in s.oxygenSaturation.map { (s.date, $0 * 100) } },
+                latestValue: snaps.last?.oxygenSaturation.map { $0 * 100 }, useBars: false
+            ))
+        }
+
+        return cards
     }
 
-    // MARK: - Recent measurement charts
-
     private var recentChartsSection: some View {
-        let snaps = viewModel.recentSnapshots
+        let cards = metricCards
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Metrics")
+                    .font(.vqHeadline)
+                    .foregroundStyle(Color.vqTextPrimary)
+                Spacer()
+                Button {
+                    showMetricPicker = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(Color.vqGreen)
+                        .symbolRenderingMode(.hierarchical)
+                }
+            }
 
-        return VStack(spacing: 12) {
-            // Resting Heart Rate
-            MiniTrendChart(
-                title: "Resting Heart Rate",
-                icon: "heart.fill",
-                color: .vqOrange,
-                unit: "bpm",
-                data: snaps.compactMap { s in
-                    s.restingHeartRate.map { (s.date, $0) }
-                },
-                latestValue: snaps.last?.restingHeartRate
-            )
-
-            // HRV
-            MiniTrendChart(
-                title: "Heart Rate Variability",
-                icon: "waveform.path.ecg",
-                color: .vqPurple,
-                unit: "ms",
-                data: snaps.compactMap { s in
-                    s.hrvSDNN.map { (s.date, $0) }
-                },
-                latestValue: snaps.last?.hrvSDNN
-            )
-
-            // Steps
-            MiniTrendChart(
-                title: "Steps",
-                icon: "figure.walk",
-                color: .vqCyan,
-                unit: "",
-                data: snaps.map { (s: DailySnapshot) -> (Date, Double) in (s.date, Double(s.steps)) },
-                latestValue: snaps.last.map { Double($0.steps) },
-                useBars: true
-            )
-
-            // Sleep Duration
-            MiniTrendChart(
-                title: "Sleep",
-                icon: "moon.stars.fill",
-                color: .vqBlue,
-                unit: "hrs",
-                data: snaps.compactMap { s in
-                    s.sleepDurationMinutes.map { (s.date, $0 / 60.0) }
-                },
-                latestValue: snaps.last?.sleepDurationMinutes.map { $0 / 60.0 }
-            )
-
-            // Active Calories
-            MiniTrendChart(
-                title: "Active Calories",
-                icon: "flame.fill",
-                color: .vqPink,
-                unit: "kcal",
-                data: snaps.map { (s: DailySnapshot) -> (Date, Double) in (s.date, s.activeCalories) },
-                latestValue: snaps.last.map { $0.activeCalories },
-                useBars: true
-            )
-
-            // Exercise Minutes
-            MiniTrendChart(
-                title: "Exercise",
-                icon: "figure.run",
-                color: .vqGreen,
-                unit: "min",
-                data: snaps.map { (s: DailySnapshot) -> (Date, Double) in (s.date, s.exerciseMinutes) },
-                latestValue: snaps.last.map { $0.exerciseMinutes },
-                useBars: true
-            )
+            MetricCardCarousel(cards: cards, autoRotate: true)
+                .frame(height: 240)
         }
     }
 
@@ -393,12 +427,11 @@ struct HomeView: View {
     }
 
     private func mascotSpeech(_ tier: ScoreTier) -> String {
-        switch tier {
-        case .excellent: return "You're amazing today! Let's gooo!"
-        case .good: return "Looking good! Keep it up!"
-        case .fair: return "Not bad — a walk might help!"
-        case .low: return "Rest up, I believe in you!"
-        }
+        let snap = viewModel.todaySnapshot
+        let recovery = snap?.recoveryScore ?? 0
+        let sleep = snap?.sleepScore ?? 0
+        let activity = snap?.activityScore ?? 0
+        return SproutDialogue.pick(recovery: recovery, sleep: sleep, activity: activity)
     }
 
     private func formatNumber(_ n: Int) -> String {
@@ -531,9 +564,32 @@ struct CompactQuestRow: View {
     }
 }
 
-// MARK: - Mini Trend Chart
+// MARK: - Metric Trend
 
-struct MiniTrendChart: View {
+enum CardTrend {
+    case good, neutral, bad
+
+    var color: Color {
+        switch self {
+        case .good: .vqGreen
+        case .neutral: .vqOrange
+        case .bad: .vqPink
+        }
+    }
+
+    var arrow: String {
+        switch self {
+        case .good: "arrow.up.right"
+        case .neutral: "arrow.right"
+        case .bad: "arrow.down.right"
+        }
+    }
+}
+
+// MARK: - Metric Card Data
+
+struct MetricCardData: Identifiable {
+    let id: String
     let title: String
     let icon: String
     let color: Color
@@ -541,39 +597,231 @@ struct MiniTrendChart: View {
     let data: [(Date, Double)]
     let latestValue: Double?
     var useBars: Bool = false
+    /// Whether higher values are better (true) or lower is better (false, e.g. RHR, weight)
+    var higherIsBetter: Bool = true
+
+    /// Compact display value for the icon strip
+    var compactValue: String {
+        guard let val = latestValue else { return "--" }
+        if val >= 10000 { return String(format: "%.0fK", val / 1000) }
+        if val >= 1000 { return String(format: "%.1fK", val / 1000) }
+        if val == val.rounded() || val >= 100 { return "\(Int(val))" }
+        return String(format: "%.1f", val)
+    }
+
+    /// Trend based on last 2 data points relative to 7-day average
+    var trend: CardTrend {
+        guard data.count >= 2, let latest = latestValue else { return .neutral }
+        let avg = data.map(\.1).reduce(0, +) / Double(data.count)
+        guard avg > 0 else { return .neutral }
+        let pctChange = (latest - avg) / avg
+
+        if higherIsBetter {
+            if pctChange > 0.05 { return .good }
+            if pctChange < -0.05 { return .bad }
+        } else {
+            if pctChange < -0.02 { return .good }
+            if pctChange > 0.05 { return .bad }
+        }
+        return .neutral
+    }
+}
+
+// MARK: - Swipeable Card Carousel with Connected Icon Strip
+
+struct MetricCardCarousel: View {
+    let cards: [MetricCardData]
+    var autoRotate: Bool = false
+
+    @State private var currentIndex: Int = 0
+    @GestureState private var dragOffset: CGFloat = 0
+    @State private var autoRotateTimer: Timer?
+    @State private var userInteracting = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Header
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(color)
+        VStack(spacing: 10) {
+            // Connected icon strip with values and trend colors
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                            let isSelected = index == currentIndex
+                            let trendColor = card.trend.color
 
-                Text(title)
-                    .font(.vqCaption)
-                    .foregroundStyle(Color.vqTextSecondary)
+                            Button {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    currentIndex = index
+                                }
+                                resetAutoRotate()
+                            } label: {
+                                VStack(spacing: 2) {
+                                    Image(systemName: card.icon)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(trendColor.opacity(isSelected ? 1 : 0.7))
 
-                Spacer()
+                                    Text(card.compactValue)
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundStyle(trendColor.opacity(isSelected ? 1 : 0.7))
 
-                if let val = latestValue {
-                    Text(formatChartValue(val) + (unit.isEmpty ? "" : " \(unit)"))
-                        .font(.vqSubheadline)
-                        .foregroundStyle(Color.vqTextPrimary)
+                                    HStack(spacing: 1) {
+                                        Image(systemName: card.trend.arrow)
+                                            .font(.system(size: 7, weight: .bold))
+                                            .foregroundStyle(trendColor.opacity(isSelected ? 1 : 0.5))
+                                        Text(shortLabel(card.title))
+                                            .font(.system(size: 8, weight: .medium, design: .rounded))
+                                            .foregroundStyle(trendColor.opacity(isSelected ? 1 : 0.5))
+                                    }
+                                }
+                                .frame(width: 56, height: 50)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(trendColor.opacity(isSelected ? 0.12 : 0.05))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(trendColor.opacity(isSelected ? 0.3 : 0.1), lineWidth: 1)
+                                )
+                            }
+                            .id(index)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+                .onChange(of: currentIndex) { _, newIndex in
+                    withAnimation(.spring(response: 0.3)) {
+                        proxy.scrollTo(newIndex, anchor: .center)
+                    }
                 }
             }
 
+            // Card carousel
+            GeometryReader { geo in
+                let cardWidth = geo.size.width * 0.82
+                let spacing: CGFloat = 12
+                let totalCardWidth = cardWidth + spacing
+                let xOffset = -CGFloat(currentIndex) * totalCardWidth + dragOffset
+                    + (geo.size.width - cardWidth) / 2
+
+                HStack(spacing: spacing) {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                        let distance = abs(CGFloat(index) - CGFloat(currentIndex) - dragOffset / totalCardWidth)
+                        let scale = max(0.88, 1 - distance * 0.08)
+                        let cardOpacity = max(0.5, 1 - distance * 0.3)
+
+                        MetricCard(card: card)
+                            .frame(width: cardWidth)
+                            .scaleEffect(scale)
+                            .opacity(cardOpacity)
+                            .rotation3DEffect(
+                                .degrees(Double(CGFloat(index) - CGFloat(currentIndex) - dragOffset / totalCardWidth) * -5),
+                                axis: (x: 0, y: 1, z: 0),
+                                perspective: 0.5
+                            )
+                    }
+                }
+                .offset(x: xOffset)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentIndex)
+                .animation(.interactiveSpring(), value: dragOffset)
+                .gesture(
+                    DragGesture()
+                        .updating($dragOffset) { value, state, _ in
+                            state = value.translation.width
+                        }
+                        .onEnded { value in
+                            let threshold: CGFloat = 40
+                            if value.translation.width < -threshold && currentIndex < cards.count - 1 {
+                                currentIndex += 1
+                            } else if value.translation.width > threshold && currentIndex > 0 {
+                                currentIndex -= 1
+                            }
+                            resetAutoRotate()
+                        }
+                )
+            }
+        }
+        .onAppear {
+            if autoRotate { startAutoRotate() }
+        }
+        .onDisappear {
+            autoRotateTimer?.invalidate()
+        }
+    }
+
+    private func shortLabel(_ title: String) -> String {
+        switch title {
+        case "Resting Heart Rate": return "RHR"
+        case "Heart Rate Variability": return "HRV"
+        case "Active Calories": return "Cal"
+        case "Mindful Minutes": return "Mind"
+        case "Blood Oxygen": return "SpO2"
+        case "Flights Climbed": return "Flights"
+        case "Body Fat": return "Fat %"
+        default: return title
+        }
+    }
+
+    private func startAutoRotate() {
+        autoRotateTimer?.invalidate()
+        autoRotateTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { _ in
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                currentIndex = (currentIndex + 1) % max(1, cards.count)
+            }
+        }
+    }
+
+    private func resetAutoRotate() {
+        guard autoRotate else { return }
+        autoRotateTimer?.invalidate()
+        // Restart after a pause
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+            startAutoRotate()
+        }
+    }
+}
+
+// MARK: - Single Metric Card
+
+struct MetricCard: View {
+    let card: MetricCardData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header
+            HStack(spacing: 10) {
+                Image(systemName: card.icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(card.color)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(card.color.opacity(0.12))
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(card.title)
+                        .font(.vqSubheadline)
+                        .foregroundStyle(Color.vqTextPrimary)
+                    if let val = card.latestValue {
+                        Text(formatValue(val) + (card.unit.isEmpty ? "" : " \(card.unit)"))
+                            .font(.vqScoreSmall)
+                            .foregroundStyle(card.color)
+                    }
+                }
+
+                Spacer()
+            }
+
             // Chart
-            if data.count >= 2 {
-                Chart(data, id: \.0) { point in
-                    if useBars {
+            if card.data.count >= 2 {
+                Chart(card.data, id: \.0) { point in
+                    if card.useBars {
                         BarMark(
                             x: .value("Day", point.0, unit: .day),
                             y: .value("Value", point.1)
                         )
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [color, color.opacity(0.5)],
+                                colors: [card.color, card.color.opacity(0.4)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -584,7 +832,7 @@ struct MiniTrendChart: View {
                             x: .value("Day", point.0, unit: .day),
                             y: .value("Value", point.1)
                         )
-                        .foregroundStyle(color.gradient)
+                        .foregroundStyle(card.color.gradient)
                         .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
                         .interpolationMethod(.catmullRom)
 
@@ -594,7 +842,7 @@ struct MiniTrendChart: View {
                         )
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [color.opacity(0.2), color.opacity(0.0)],
+                                colors: [card.color.opacity(0.2), card.color.opacity(0.0)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -614,25 +862,163 @@ struct MiniTrendChart: View {
                             .foregroundStyle(Color.vqTextSecondary.opacity(0.4))
                     }
                 }
-                .frame(height: 100)
             } else {
                 Text("Not enough data yet")
                     .font(.vqCaption)
                     .foregroundStyle(Color.vqTextSecondary.opacity(0.5))
-                    .frame(height: 60)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .vqCard()
+        .padding(16)
+        .frame(maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.vqCardBackground)
+                .shadow(color: card.color.opacity(0.12), radius: 12, x: 0, y: 6)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(card.color.opacity(0.2), lineWidth: 1)
+        )
     }
 
-    private func formatChartValue(_ value: Double) -> String {
+    private func formatValue(_ value: Double) -> String {
         if value >= 1000 {
             return String(format: "%.1fK", value / 1000)
         }
         return value.truncatingRemainder(dividingBy: 1) == 0
             ? "\(Int(value))"
             : String(format: "%.1f", value)
+    }
+}
+
+// MARK: - Toolbar XP Bar (level title + progress bar inline)
+
+struct ToolbarXPBar: View {
+    let level: Int
+    let title: String
+    let progress: Double
+    let xpToNext: Int
+
+    @State private var animatedProgress: Double = 0
+    private let barWidth: CGFloat = 140
+
+    var body: some View {
+        VStack(alignment: .center, spacing: 3) {
+            HStack(spacing: 4) {
+                Text("Lv.\(level)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.vqYellow)
+
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.vqTextPrimary)
+            }
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.vqTextPrimary.opacity(0.1))
+                    .frame(width: barWidth, height: 5)
+
+                Capsule()
+                    .fill(LinearGradient.xpBar)
+                    .frame(width: max(0, barWidth * animatedProgress), height: 5)
+            }
+
+            Text("\(xpToNext) XP to next")
+                .font(.system(size: 9, weight: .medium, design: .rounded))
+                .foregroundStyle(Color.vqTextSecondary.opacity(0.5))
+        }
+        .onAppear {
+            withAnimation(.spring(response: 1.0, dampingFraction: 0.7).delay(0.3)) {
+                animatedProgress = progress
+            }
+        }
+    }
+}
+
+// MARK: - Metric Picker Sheet
+
+struct MetricPickerSheet: View {
+    let profile: UserProfile?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    private let optionalMetrics: [(id: String, title: String, icon: String, color: Color, description: String)] = [
+        ("distance", "Distance", "figure.walk.motion", .vqCyan, "Walking + running distance"),
+        ("flights", "Flights Climbed", "figure.stairs", .vqOrange, "Stair flights per day"),
+        ("bodyFat", "Body Fat %", "percent", .vqPink, "Body fat percentage"),
+        ("mindful", "Mindful Minutes", "brain.head.profile.fill", .vqPurple, "Meditation & mindfulness"),
+        ("vo2Max", "VO2 Max", "lungs.fill", .vqBlue, "Cardio fitness level"),
+        ("spo2", "Blood Oxygen", "drop.fill", .vqOrange, "Overnight SpO2 levels"),
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AnimatedMeshBackground()
+
+                List {
+                    Section {
+                        ForEach(optionalMetrics, id: \.id) { metric in
+                            let isEnabled = profile?.enabledOptionalMetrics.contains(metric.id) ?? false
+                            Button {
+                                toggleMetric(metric.id)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: metric.icon)
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(metric.color)
+                                        .frame(width: 34, height: 34)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(metric.color.opacity(0.12))
+                                        )
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(metric.title)
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundStyle(Color.vqTextPrimary)
+                                        Text(metric.description)
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Color.vqTextSecondary.opacity(0.7))
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: isEnabled ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(isEnabled ? Color.vqGreen : Color.vqTextSecondary.opacity(0.3))
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("Available Metrics")
+                    } footer: {
+                        Text("Toggle metrics to add or remove them from your dashboard cards.")
+                    }
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle("Add Metrics")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(Color.vqGreen)
+                }
+            }
+        }
+    }
+
+    private func toggleMetric(_ id: String) {
+        guard let profile else { return }
+        if let index = profile.enabledOptionalMetrics.firstIndex(of: id) {
+            profile.enabledOptionalMetrics.remove(at: index)
+        } else {
+            profile.enabledOptionalMetrics.append(id)
+        }
+        try? modelContext.save()
     }
 }
 

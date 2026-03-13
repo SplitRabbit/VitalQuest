@@ -40,6 +40,11 @@ struct DailyHealthData {
     var oxygenSaturation: Double?
     var respiratoryRate: Double?
     var wristTemperature: Double?
+    var bodyMass: Double?
+    var bodyFatPercentage: Double?
+    var distanceWalkingRunning: Double?
+    var flightsClimbed: Int?
+    var mindfulMinutes: Double?
     var workoutCount: Int
     var workoutTypes: [String]
 }
@@ -64,6 +69,11 @@ final class HealthKitManager: HealthKitDataProvider {
             HKQuantityType(.vo2Max),
             HKQuantityType(.respiratoryRate),
             HKCategoryType(.sleepAnalysis),
+            HKQuantityType(.bodyMass),
+            HKQuantityType(.bodyFatPercentage),
+            HKQuantityType(.distanceWalkingRunning),
+            HKQuantityType(.flightsClimbed),
+            HKCategoryType(.mindfulSession),
             HKObjectType.workoutType()
         ]
         if #available(iOS 17.0, *) {
@@ -158,8 +168,10 @@ final class HealthKitManager: HealthKitDataProvider {
     func fetchSleepAnalysis(for date: Date) async throws -> SleepData? {
         let calendar = Calendar.current
         // Sleep usually starts the night before — look from 6 PM yesterday to noon today
-        let sleepStart = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: date)!)!
-        let sleepEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date)!
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: date),
+              let sleepStart = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: yesterday),
+              let sleepEnd = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date)
+        else { return nil }
 
         let predicate = HKQuery.predicateForSamples(withStart: sleepStart, end: sleepEnd, options: .strictStartDate)
         let sleepType = HKCategoryType(.sleepAnalysis)
@@ -209,10 +221,10 @@ final class HealthKitManager: HealthKitDataProvider {
             }
 
             if value != .awake && value != .inBed {
-                if earliestSleep == nil || sample.startDate < earliestSleep! {
+                if sample.startDate < (earliestSleep ?? .distantFuture) {
                     earliestSleep = sample.startDate
                 }
-                if latestWake == nil || sample.endDate > latestWake! {
+                if sample.endDate > (latestWake ?? .distantPast) {
                     latestWake = sample.endDate
                 }
             }
@@ -247,10 +259,17 @@ final class HealthKitManager: HealthKitDataProvider {
         async let hrvResult = fetchHRV(for: date)
         async let sleepResult = fetchSleepAnalysis(for: date)
         async let workoutsResult = fetchWorkouts(for: date)
+        async let weightResult = fetchLatestSample(type: .bodyMass, for: date, unit: .gramUnit(with: .kilo))
+        async let bodyFatResult = fetchLatestSample(type: .bodyFatPercentage, for: date, unit: .percent())
+        async let distanceResult = fetchCumulativeSum(type: .distanceWalkingRunning, start: start, end: end, unit: .meter())
+        async let flightsResult = fetchCumulativeSum(type: .flightsClimbed, start: start, end: end, unit: .count())
+        async let mindfulResult = fetchMindfulMinutes(start: start, end: end)
 
-        let (steps, calories, exercise, stand, rhr, hrv, sleep, workouts) = try await (
+        let (steps, calories, exercise, stand, rhr, hrv, sleep, workouts,
+             weight, bodyFat, distance, flights, mindful) = try await (
             stepsResult, caloriesResult, exerciseResult, standResult,
-            rhrResult, hrvResult, sleepResult, workoutsResult
+            rhrResult, hrvResult, sleepResult, workoutsResult,
+            weightResult, bodyFatResult, distanceResult, flightsResult, mindfulResult
         )
 
         return DailyHealthData(
@@ -266,6 +285,11 @@ final class HealthKitManager: HealthKitDataProvider {
             oxygenSaturation: nil,
             respiratoryRate: nil,
             wristTemperature: nil,
+            bodyMass: weight,
+            bodyFatPercentage: bodyFat,
+            distanceWalkingRunning: distance > 0 ? distance : nil,
+            flightsClimbed: flights > 0 ? Int(flights) : nil,
+            mindfulMinutes: mindful > 0 ? mindful : nil,
             workoutCount: workouts.count,
             workoutTypes: workouts.map { $0.workoutActivityType.name }
         )
@@ -349,6 +373,43 @@ final class HealthKitManager: HealthKitDataProvider {
             options: .cumulativeSum
         )
         return stats?.sumQuantity()?.doubleValue(for: unit) ?? 0
+    }
+
+    private func fetchMindfulMinutes(start: Date, end: Date) async throws -> Double {
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let samples: [HKCategorySample] = try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: HKCategoryType(.mindfulSession),
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, results, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: results as? [HKCategorySample] ?? [])
+                }
+            }
+            healthStore.execute(query)
+        }
+        return samples.reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) / 60.0 }
+    }
+
+    private func fetchLatestSample(
+        type: HKQuantityTypeIdentifier,
+        for date: Date,
+        unit: HKUnit
+    ) async throws -> Double? {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return nil }
+        let samples = try await fetchSamples(
+            type: HKQuantityType(type),
+            start: start,
+            end: end,
+            limit: 1
+        )
+        return samples.first?.quantity.doubleValue(for: unit)
     }
 
     private func fetchWorkouts(for date: Date) async throws -> [HKWorkout] {

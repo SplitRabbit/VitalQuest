@@ -176,7 +176,8 @@ final class ScoringEngine {
         var components: [String: Double] = [:]
 
         // Calories vs goal (25%)
-        let calorieScore = Statistics.clamp01Score((activeCalories / calorieGoal) * 100)
+        let calorieScore = calorieGoal > 0
+            ? Statistics.clamp01Score((activeCalories / calorieGoal) * 100) : 0
         components["calories"] = calorieScore
 
         // Steps percentile (20%)
@@ -184,7 +185,8 @@ final class ScoringEngine {
         if baselineEngine.hasBaseline(for: MetricBaseline.steps) {
             stepScore = baselineEngine.percentile(value: Double(steps), for: MetricBaseline.steps)
         } else {
-            stepScore = Statistics.clamp01Score(Double(steps) / Double(stepGoal) * 100)
+            stepScore = stepGoal > 0
+                ? Statistics.clamp01Score(Double(steps) / Double(stepGoal) * 100) : 0
         }
         components["steps"] = stepScore
 

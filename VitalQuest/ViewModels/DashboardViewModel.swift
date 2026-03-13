@@ -69,6 +69,11 @@ final class DashboardViewModel {
             snapshot.hrvSDNN = healthData.hrvSDNN
             snapshot.workoutCount = healthData.workoutCount
             snapshot.workoutTypes = healthData.workoutTypes
+            snapshot.bodyMass = healthData.bodyMass
+            snapshot.bodyFatPercentage = healthData.bodyFatPercentage
+            snapshot.distanceWalkingRunning = healthData.distanceWalkingRunning
+            snapshot.flightsClimbed = healthData.flightsClimbed
+            snapshot.mindfulMinutes = healthData.mindfulMinutes
             if let sleep = healthData.sleep {
                 snapshot.sleepDurationMinutes = sleep.totalMinutes
                 snapshot.deepSleepMinutes = sleep.deepMinutes

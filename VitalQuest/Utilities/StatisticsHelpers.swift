@@ -74,6 +74,7 @@ enum Statistics {
     /// Gaussian score centered on target with given width (sigma)
     /// Returns 0-100 where 100 = exactly on target
     static func gaussianScore(value: Double, target: Double, sigma: Double) -> Double {
+        guard sigma > 0 else { return value == target ? 100.0 : 0.0 }
         let z = (value - target) / sigma
         return 100.0 * exp(-0.5 * z * z)
     }
@@ -87,6 +88,54 @@ enum Statistics {
     static func lnTransform(_ value: Double) -> Double {
         guard value > 0 else { return 0 }
         return log(value)
+    }
+
+    /// Pearson correlation coefficient between two equal-length arrays
+    static func pearsonCorrelation(x: [Double], y: [Double]) -> Double {
+        let n = min(x.count, y.count)
+        guard n >= 2 else { return 0 }
+        let xMean = sma(values: Array(x.prefix(n)))
+        let yMean = sma(values: Array(y.prefix(n)))
+        var numerator = 0.0
+        var denomX = 0.0
+        var denomY = 0.0
+        for i in 0..<n {
+            let dx = x[i] - xMean
+            let dy = y[i] - yMean
+            numerator += dx * dy
+            denomX += dx * dx
+            denomY += dy * dy
+        }
+        let denom = sqrt(denomX * denomY)
+        guard denom > 0 else { return 0 }
+        return numerator / denom
+    }
+
+    /// Moving average with given window size
+    static func movingAverage(values: [Double], window: Int) -> [Double] {
+        guard window > 0, !values.isEmpty else { return [] }
+        let w = min(window, values.count)
+        var result: [Double] = []
+        var sum = 0.0
+
+        for i in 0..<values.count {
+            sum += values[i]
+            if i >= w {
+                sum -= values[i - w]
+            }
+            let count = min(i + 1, w)
+            result.append(sum / Double(count))
+        }
+
+        return result
+    }
+
+    /// Autocorrelation at a given lag
+    static func autocorrelation(values: [Double], lag: Int) -> Double {
+        guard lag > 0, values.count > lag else { return 0 }
+        let x = Array(values.dropLast(lag))
+        let y = Array(values.dropFirst(lag))
+        return pearsonCorrelation(x: x, y: y)
     }
 
     /// Insert a value into a sorted array, maintaining sort order.

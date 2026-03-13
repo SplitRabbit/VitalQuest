@@ -1,7 +1,9 @@
 import Foundation
+import Observation
 
 /// Mock data provider for SwiftUI Previews and unit tests.
 /// Generates realistic health data without requiring HealthKit.
+@Observable
 final class MockHealthKitManager: HealthKitDataProvider {
     var isAuthorized = true
     var shouldFail = false
@@ -42,8 +44,9 @@ final class MockHealthKitManager: HealthKitDataProvider {
         let coreRatio = 1.0 - deepRatio - remRatio
 
         let calendar = Calendar.current
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: date) ?? date
         let bedtime = calendar.date(bySettingHour: Int.random(in: 21...23), minute: Int.random(in: 0...59), second: 0,
-                                     of: calendar.date(byAdding: .day, value: -1, to: date)!)
+                                     of: yesterday)
         let wakeTime = calendar.date(bySettingHour: Int.random(in: 5...8), minute: Int.random(in: 0...59), second: 0, of: date)
 
         return SleepData(
@@ -71,6 +74,11 @@ final class MockHealthKitManager: HealthKitDataProvider {
             oxygenSaturation: nil,
             respiratoryRate: nil,
             wristTemperature: nil,
+            bodyMass: Double.random(in: 65...85),
+            bodyFatPercentage: Double.random(in: 15...28),
+            distanceWalkingRunning: Double.random(in: 2000...10000),
+            flightsClimbed: Int.random(in: 2...15),
+            mindfulMinutes: Bool.random() ? Double.random(in: 5...30) : nil,
             workoutCount: Int.random(in: 0...2),
             workoutTypes: Bool.random() ? ["Running"] : []
         )
@@ -116,6 +124,9 @@ extension DailySnapshot {
         snap.recoveryScore = Double.random(in: 55...95)
         snap.sleepScore = Double.random(in: 50...90)
         snap.activityScore = Double.random(in: 40...85)
+        snap.bodyMass = Double.random(in: 68...82)
+        snap.distanceWalkingRunning = Double.random(in: 3000...8000)
+        snap.flightsClimbed = Int.random(in: 3...12)
         snap.xpEarned = Int.random(in: 50...200)
         snap.checkedIn = true
         snap.dataCompleteness = 0.85

@@ -6,11 +6,12 @@ struct MockEnvironmentModifier: ViewModifier {
     func body(content: Content) -> some View {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try! ModelContainer(
-            for: DailySnapshot.self, MetricBaseline.self, Quest.self, Achievement.self, UserProfile.self,
+            for: DailySnapshot.self, MetricBaseline.self, Quest.self, Achievement.self, UserProfile.self, JournalEntry.self,
             configurations: config
         )
         let context = container.mainContext
         let hk = HealthKitManager()
+        let mock = MockHealthKitManager()
         let baseline = BaselineEngine(modelContext: context)
         let scoring = ScoringEngine(baselineEngine: baseline)
         let xp = XPEngine(modelContext: context)
@@ -20,6 +21,7 @@ struct MockEnvironmentModifier: ViewModifier {
         return content
             .modelContainer(container)
             .environment(hk)
+            .environment(mock)
             .environment(scoring)
             .environment(baseline)
             .environment(xp)

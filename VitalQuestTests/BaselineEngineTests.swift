@@ -4,6 +4,7 @@ import SwiftData
 @testable import VitalQuest
 
 @Suite("Baseline Engine Tests")
+@MainActor
 struct BaselineEngineTests {
     let modelContainer: ModelContainer
     let engine: BaselineEngine
@@ -91,7 +92,8 @@ struct BaselineEngineTests {
             exerciseMinutes: 30,
             standMinutes: 60,
             restingHeartRate: 62,
-            hrvSDNN: 45,
+            hrvSummary: HRVSummary(mean: 45, min: 35, max: 55, sampleCount: 5),
+            heartRateSummary: HeartRateSummary(mean: 72, min: 55, max: 130),
             sleep: SleepData(
                 totalMinutes: 480,
                 deepMinutes: 80,
@@ -105,8 +107,18 @@ struct BaselineEngineTests {
             oxygenSaturation: nil,
             respiratoryRate: nil,
             wristTemperature: nil,
-            workoutCount: 1,
-            workoutTypes: ["Running"]
+            bodyMass: nil,
+            bodyFatPercentage: nil,
+            distanceWalkingRunning: nil,
+            flightsClimbed: nil,
+            mindfulMinutes: nil,
+            workouts: WorkoutSummary(
+                count: 1,
+                types: ["Running"],
+                totalDurationMinutes: 30,
+                totalCalories: 250,
+                totalDistanceMeters: 5000
+            )
         )
 
         engine.updateBaselines(from: data)

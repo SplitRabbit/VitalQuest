@@ -10,6 +10,8 @@ struct HomeView: View {
     @Environment(XPEngine.self) private var xpEngine
     @Environment(StreakManager.self) private var streakManager
     @Environment(QuestEngine.self) private var questEngine
+    @Environment(RawSampleCollector.self) private var rawSampleCollector
+    @Environment(FeedService.self) private var feedService
     @Environment(\.modelContext) private var modelContext
 
     private var activeProvider: HealthKitDataProvider {
@@ -21,7 +23,6 @@ struct HomeView: View {
     }
 
     @State private var viewModel = DashboardViewModel()
-    @State private var expandedScore: String?
     @State private var appeared = false
     @State private var showConfetti = false
 
@@ -39,27 +40,46 @@ struct HomeView: View {
         }
     }
 
+    private var dayScore: Double {
+        guard let snap = viewModel.todaySnapshot else { return 50 }
+        let scores = [snap.recoveryScore, snap.sleepScore, snap.activityScore].compactMap { $0 }
+        guard !scores.isEmpty else { return 50 }
+        return scores.reduce(0, +) / Double(scores.count)
+    }
+
     @State private var showMetricPicker = false
     @State private var showSproutChat = false
+    @State private var cachedSproutMessage: String?
+    @State private var selectedScoreType: ScoreDetailView.ScoreType?
+    @State private var selectedMetricCard: MetricCardData?
+    @State private var selectedQuest: Quest?
 
     var body: some View {
         NavigationStack {
             ZStack {
-                AnimatedMeshBackground()
+                AnimatedMeshBackground(score: dayScore)
 
                 ScrollView {
-                    VStack(spacing: 20) {
-                        // Top bar: streak left, XP center, profile right
+                    VStack(spacing: 16) {
+                        // Top bar: streak left, date center, profile right
                         ZStack {
-                            // Center: XP bar
-                            if let profile = viewModel.profile {
-                                ToolbarXPBar(
-                                    level: profile.level,
-                                    title: profile.title,
-                                    progress: profile.levelProgress,
-                                    xpToNext: profile.xpToNextLevel
-                                )
-                            }
+                            // Center: date navigator
+                            DateNavigator(
+                                date: viewModel.selectedDate,
+                                isToday: viewModel.isToday,
+                                onPrevious: {
+                                    viewModel.goToPreviousDay()
+                                    Task { await viewModel.refresh() }
+                                },
+                                onNext: {
+                                    viewModel.goToNextDay()
+                                    Task { await viewModel.refresh() }
+                                },
+                                onToday: {
+                                    viewModel.goToToday()
+                                    Task { await viewModel.refresh() }
+                                }
+                            )
 
                             // Left + Right
                             HStack {
@@ -67,32 +87,59 @@ struct HomeView: View {
                                     StreakBadge(streak: profile.currentStreak, freezes: profile.streakFreezes, compact: true)
                                 }
                                 Spacer()
-                                ProfileButton()
+                                HStack(spacing: 8) {
+                                    if viewModel.isLoading {
+                                        ProgressView().tint(.vqCyan)
+                                    }
+                                    ProfileButton()
+                                }
                             }
                         }
                         .padding(.top, 8)
 
-                        headerRow
-                            .slideIn(appeared: appeared, delay: 0)
+                        // Greeting
+                        HStack {
+                            Text(greetingText)
+                                .font(.vqTitle)
+                                .foregroundStyle(Color.vqTextPrimary)
+                            Spacer()
+                        }
 
                         scoresSection
-                            .slideIn(appeared: appeared, delay: 0.1)
+                            .slideIn(appeared: appeared, delay: 0)
 
                         recentChartsSection
-                            .slideIn(appeared: appeared, delay: 0.2)
+                            .slideIn(appeared: appeared, delay: 0.1)
 
                         DailyLogCard()
-                            .slideIn(appeared: appeared, delay: 0.3)
+                            .slideIn(appeared: appeared, delay: 0.2)
 
                         questsSection
-                            .slideIn(appeared: appeared, delay: 0.4)
+                            .slideIn(appeared: appeared, delay: 0.3)
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 8)
                 }
                 .refreshable {
                     await viewModel.refresh()
+                    updateSproutMessage()
                 }
+                .gesture(
+                    DragGesture(minimumDistance: 50)
+                        .onEnded { value in
+                            // Horizontal swipe to change day (only if more horizontal than vertical)
+                            guard abs(value.translation.width) > abs(value.translation.height) * 1.5 else { return }
+                            if value.translation.width < -50 {
+                                // Swipe left = next day
+                                viewModel.goToNextDay()
+                                Task { await viewModel.refresh() }
+                            } else if value.translation.width > 50 {
+                                // Swipe right = previous day
+                                viewModel.goToPreviousDay()
+                                Task { await viewModel.refresh() }
+                            }
+                        }
+                )
 
                 // Confetti overlay
                 if showConfetti {
@@ -102,10 +149,38 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
             .sheet(isPresented: $showMetricPicker) {
-                MetricPickerSheet(profile: viewModel.profile)
+                MetricPickerSheet(profile: viewModel.profile, snapshots: viewModel.recentSnapshots)
             }
             .sheet(isPresented: $showSproutChat) {
                 SproutChatView(snapshot: viewModel.todaySnapshot)
+            }
+            .sheet(item: $selectedScoreType) { scoreType in
+                ScoreDetailView(
+                    scoreType: scoreType,
+                    snapshot: viewModel.todaySnapshot,
+                    recentSnapshots: viewModel.recentSnapshots
+                )
+            }
+            .sheet(item: $selectedMetricCard) { card in
+                MetricDetailView(
+                    metricID: card.id,
+                    title: card.title,
+                    icon: card.icon,
+                    color: card.color,
+                    unit: card.unit,
+                    higherIsBetter: card.higherIsBetter,
+                    recentSnapshots: viewModel.recentSnapshots
+                )
+            }
+            .sheet(item: $selectedQuest) { quest in
+                QuestDetailView(quest: quest)
+            }
+            .onChange(of: viewModel.selectedDate) { _, _ in
+                appeared = false
+                cachedSproutMessage = nil
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) {
+                    appeared = true
+                }
             }
             .task {
                 viewModel.configure(
@@ -115,9 +190,12 @@ struct HomeView: View {
                     baselineEngine: baselineEngine,
                     xpEngine: xpEngine,
                     streakManager: streakManager,
-                    questEngine: questEngine
+                    questEngine: questEngine,
+                    rawSampleCollector: rawSampleCollector,
+                    feedService: feedService
                 )
                 await viewModel.refresh()
+                updateSproutMessage()
 
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                     appeared = true
@@ -132,35 +210,25 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Header: greeting + mascot + streak
-
-    private var headerRow: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greetingText)
-                    .font(.vqTitle)
-                    .foregroundStyle(Color.vqTextPrimary)
-                Text(Date().formatted(.dateTime.weekday(.wide).month().day()))
-                    .font(.vqCaption)
-                    .foregroundStyle(Color.vqTextSecondary.opacity(0.7))
-            }
-            Spacer()
-            if viewModel.isLoading {
-                ProgressView().tint(.vqCyan)
-            }
-        }
-        .padding(.top, 4)
-    }
-
     // MARK: - Three scores as horizontal bar chart
 
     private var scoresSection: some View {
         let snap = viewModel.todaySnapshot
         let scores = [snap?.recoveryScore, snap?.sleepScore, snap?.activityScore].compactMap { $0 }
         let avgScore = scores.isEmpty ? 0.0 : scores.reduce(0, +) / Double(scores.count)
-        let tier = DailySnapshot.scoreTier(avgScore)
 
         return VStack(spacing: 14) {
+            // Horizontal bar chart
+            VStack(spacing: 12) {
+                scoreBar("Recovery", score: snap?.recoveryScore, icon: "bolt.heart.fill",
+                         color: .vqGreen, components: snap?.recoveryComponents)
+                scoreBar("Sleep", score: snap?.sleepScore, icon: "moon.stars.fill",
+                         color: .vqBlue, components: snap?.sleepComponents)
+                scoreBar("Activity", score: snap?.activityScore, icon: "figure.run",
+                         color: .vqPink, components: snap?.activityComponents)
+            }
+            .vqCard()
+
             // Mascot + speech (tappable to open chat)
             ZStack(alignment: .topTrailing) {
                 Button {
@@ -168,7 +236,7 @@ struct HomeView: View {
                 } label: {
                     HStack(spacing: 6) {
                         Mascot(mood: mascotMood, size: 36)
-                        Text(mascotSpeech(tier))
+                        Text(sproutMessage)
                             .font(.vqBody)
                             .foregroundStyle(Color.vqTextSecondary)
                             .multilineTextAlignment(.leading)
@@ -187,93 +255,64 @@ struct HomeView: View {
                         .offset(x: 10, y: -15)
                 }
             }
-
-            // Horizontal bar chart
-            VStack(spacing: 12) {
-                scoreBar("Recovery", score: snap?.recoveryScore, icon: "bolt.heart.fill",
-                         color: .vqGreen, components: snap?.recoveryComponents)
-                scoreBar("Sleep", score: snap?.sleepScore, icon: "moon.stars.fill",
-                         color: .vqBlue, components: snap?.sleepComponents)
-                scoreBar("Activity", score: snap?.activityScore, icon: "figure.run",
-                         color: .vqPink, components: snap?.activityComponents)
-            }
-            .vqCard()
         }
     }
 
     private func scoreBar(_ label: String, score: Double?, icon: String,
                           color: Color, components: [String: Double]?) -> some View {
         let value = score ?? 0
-        let isExpanded = expandedScore == label
 
-        return VStack(spacing: 4) {
-            Button {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    expandedScore = isExpanded ? nil : label
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(color)
-                        .frame(width: 24)
-
-                    Text(label)
-                        .font(.vqCaption)
-                        .foregroundStyle(Color.vqTextSecondary)
-                        .frame(width: 62, alignment: .leading)
-
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.vqTextPrimary.opacity(0.06))
-
-                            Capsule()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [color, color.opacity(0.6)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                                .frame(width: max(0, geo.size.width * value / 100))
-                                .shadow(color: color.opacity(0.3), radius: 4)
-                        }
-                    }
-                    .frame(height: 14)
-                    .clipShape(Capsule())
-
-                    Text("\(Int(value))")
-                        .font(.vqSubheadline)
-                        .foregroundStyle(DailySnapshot.scoreTier(value).color)
-                        .frame(width: 32, alignment: .trailing)
-                        .contentTransition(.numericText(value: value))
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.vqTextSecondary.opacity(0.4))
-                }
+        return Button {
+            switch label {
+            case "Recovery": selectedScoreType = .recovery
+            case "Sleep": selectedScoreType = .sleep
+            case "Activity": selectedScoreType = .activity
+            default: break
             }
-            .buttonStyle(.plain)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(color)
+                    .frame(width: 24)
 
-            if isExpanded, let comps = components {
-                VStack(spacing: 6) {
-                    ForEach(comps.sorted(by: { $0.key < $1.key }), id: \.key) { key, val in
-                        if key != "total" && key != "status" {
-                            ScoreComponentRow(
-                                label: formatComponentName(key),
-                                value: val,
-                                weight: "",
-                                color: color
+                Text(label)
+                    .font(.vqCaption)
+                    .foregroundStyle(Color.vqTextSecondary)
+                    .frame(width: 62, alignment: .leading)
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.vqTextPrimary.opacity(0.06))
+
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: [color, color.opacity(0.6)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
                             )
-                        }
+                            .frame(width: max(0, geo.size.width * value / 100))
+                            .shadow(color: color.opacity(0.3), radius: 4)
                     }
                 }
-                .padding(.leading, 34)
-                .padding(.top, 4)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .frame(height: 14)
+                .clipShape(Capsule())
+
+                Text("\(Int(value))")
+                    .font(.vqSubheadline)
+                    .foregroundStyle(DailySnapshot.scoreTier(value).color)
+                    .frame(width: 32, alignment: .trailing)
+                    .contentTransition(.numericText(value: value))
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Color.vqTextSecondary.opacity(0.4))
             }
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Metric cards with connected icon strip
@@ -282,95 +321,130 @@ struct HomeView: View {
         let snaps = viewModel.recentSnapshots
         let enabledOptional = Set(viewModel.profile?.enabledOptionalMetrics ?? [])
 
-        // Default cards (always shown)
-        var cards: [MetricCardData] = [
-            MetricCardData(
-                id: "weight", title: "Weight", icon: "scalemass.fill", color: .vqGreen, unit: "kg",
-                data: snaps.compactMap { s in s.bodyMass.map { (s.date, $0) } },
-                latestValue: snaps.last?.bodyMass, useBars: false, higherIsBetter: false
-            ),
-            MetricCardData(
-                id: "rhr", title: "Resting Heart Rate", icon: "heart.fill", color: .vqOrange, unit: "bpm",
-                data: snaps.compactMap { s in s.restingHeartRate.map { (s.date, $0) } },
-                latestValue: snaps.last?.restingHeartRate, useBars: false, higherIsBetter: false
-            ),
-            MetricCardData(
-                id: "hrv", title: "Heart Rate Variability", icon: "waveform.path.ecg", color: .vqPurple, unit: "ms",
-                data: snaps.compactMap { s in s.hrvSDNN.map { (s.date, $0) } },
-                latestValue: snaps.last?.hrvSDNN, useBars: false
-            ),
-            MetricCardData(
-                id: "steps", title: "Steps", icon: "figure.walk", color: .vqCyan, unit: "",
-                data: snaps.map { ($0.date, Double($0.steps)) },
-                latestValue: snaps.last.map { Double($0.steps) }, useBars: true
-            ),
-            MetricCardData(
-                id: "sleep", title: "Sleep", icon: "moon.stars.fill", color: .vqBlue, unit: "hrs",
-                data: snaps.compactMap { s in s.sleepDurationMinutes.map { (s.date, $0 / 60.0) } },
-                latestValue: snaps.last?.sleepDurationMinutes.map { $0 / 60.0 }, useBars: false
-            ),
-            MetricCardData(
-                id: "calories", title: "Active Calories", icon: "flame.fill", color: .vqPink, unit: "kcal",
-                data: snaps.map { ($0.date, $0.activeCalories) },
-                latestValue: snaps.last.map { $0.activeCalories }, useBars: true
-            ),
-            MetricCardData(
-                id: "exercise", title: "Exercise", icon: "figure.run", color: .vqGreen, unit: "min",
-                data: snaps.map { ($0.date, $0.exerciseMinutes) },
-                latestValue: snaps.last.map { $0.exerciseMinutes }, useBars: true
-            ),
-        ]
+        // Build all possible cards, then filter to only those with data
+        var candidates: [MetricCardData] = []
 
-        // Optional cards (user-enabled)
-        if enabledOptional.contains("distance") {
-            cards.append(MetricCardData(
-                id: "distance", title: "Distance", icon: "figure.walk.motion", color: .vqCyan, unit: "km",
-                data: snaps.compactMap { s in s.distanceWalkingRunning.map { (s.date, $0 / 1000.0) } },
-                latestValue: snaps.last?.distanceWalkingRunning.map { $0 / 1000.0 }, useBars: false
+        // Default cards
+        let weightData = snaps.compactMap { s in s.bodyMass.map { (s.date, $0) } }
+        if !weightData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "weight", title: "Weight", icon: "scalemass.fill", color: .vqGreen, unit: "kg",
+                data: weightData, latestValue: snaps.last?.bodyMass, useBars: false, higherIsBetter: false
             ))
+        }
+
+        let rhrData = snaps.compactMap { s in s.restingHeartRate.map { (s.date, $0) } }
+        if !rhrData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "rhr", title: "Resting Heart Rate", icon: "heart.fill", color: .vqOrange, unit: "bpm",
+                data: rhrData, latestValue: snaps.last?.restingHeartRate, useBars: false, higherIsBetter: false
+            ))
+        }
+
+        let hrvData = snaps.compactMap { s in s.hrvSDNN.map { (s.date, $0) } }
+        if !hrvData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "hrv", title: "Heart Rate Variability", icon: "waveform.path.ecg", color: .vqPurple, unit: "ms",
+                data: hrvData, latestValue: snaps.last?.hrvSDNN, useBars: false
+            ))
+        }
+
+        let stepsData = snaps.filter { $0.steps > 0 }.map { ($0.date, Double($0.steps)) }
+        if !stepsData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "steps", title: "Steps", icon: "figure.walk", color: .vqCyan, unit: "",
+                data: stepsData, latestValue: snaps.last.map { Double($0.steps) }, useBars: true
+            ))
+        }
+
+        let sleepData = snaps.compactMap { s in s.sleepDurationMinutes.map { (s.date, $0 / 60.0) } }
+        if !sleepData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "sleep", title: "Sleep", icon: "moon.stars.fill", color: .vqBlue, unit: "hrs",
+                data: sleepData, latestValue: snaps.last?.sleepDurationMinutes.map { $0 / 60.0 }, useBars: false
+            ))
+        }
+
+        let calData = snaps.filter { $0.activeCalories > 0 }.map { ($0.date, $0.activeCalories) }
+        if !calData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "calories", title: "Active Calories", icon: "flame.fill", color: .vqPink, unit: "kcal",
+                data: calData, latestValue: snaps.last.map { $0.activeCalories }, useBars: true
+            ))
+        }
+
+        let exData = snaps.filter { $0.exerciseMinutes > 0 }.map { ($0.date, $0.exerciseMinutes) }
+        if !exData.isEmpty {
+            candidates.append(MetricCardData(
+                id: "exercise", title: "Exercise", icon: "figure.run", color: .vqGreen, unit: "min",
+                data: exData, latestValue: snaps.last.map { $0.exerciseMinutes }, useBars: true
+            ))
+        }
+
+        // Optional cards (user-enabled, only if data exists)
+        if enabledOptional.contains("distance") {
+            let data = snaps.compactMap { s in s.distanceWalkingRunning.map { (s.date, $0 / 1000.0) } }
+            if !data.isEmpty {
+                candidates.append(MetricCardData(
+                    id: "distance", title: "Distance", icon: "figure.walk.motion", color: .vqCyan, unit: "km",
+                    data: data, latestValue: snaps.last?.distanceWalkingRunning.map { $0 / 1000.0 }, useBars: false
+                ))
+            }
         }
         if enabledOptional.contains("flights") {
-            cards.append(MetricCardData(
-                id: "flights", title: "Flights Climbed", icon: "figure.stairs", color: .vqOrange, unit: "",
-                data: snaps.compactMap { s in s.flightsClimbed.map { (s.date, Double($0)) } },
-                latestValue: snaps.last?.flightsClimbed.map { Double($0) }, useBars: true
-            ))
+            let data = snaps.compactMap { s in s.flightsClimbed.map { (s.date, Double($0)) } }
+            if !data.isEmpty {
+                candidates.append(MetricCardData(
+                    id: "flights", title: "Flights Climbed", icon: "figure.stairs", color: .vqOrange, unit: "",
+                    data: data, latestValue: snaps.last?.flightsClimbed.map { Double($0) }, useBars: true
+                ))
+            }
         }
         if enabledOptional.contains("bodyFat") {
-            cards.append(MetricCardData(
-                id: "bodyFat", title: "Body Fat", icon: "percent", color: .vqPink, unit: "%",
-                data: snaps.compactMap { s in s.bodyFatPercentage.map { (s.date, $0 * 100) } },
-                latestValue: snaps.last?.bodyFatPercentage.map { $0 * 100 }, useBars: false, higherIsBetter: false
-            ))
+            let data = snaps.compactMap { s in s.bodyFatPercentage.map { (s.date, $0 * 100) } }
+            if !data.isEmpty {
+                candidates.append(MetricCardData(
+                    id: "bodyFat", title: "Body Fat", icon: "percent", color: .vqPink, unit: "%",
+                    data: data, latestValue: snaps.last?.bodyFatPercentage.map { $0 * 100 }, useBars: false, higherIsBetter: false
+                ))
+            }
         }
         if enabledOptional.contains("mindful") {
-            cards.append(MetricCardData(
-                id: "mindful", title: "Mindful Minutes", icon: "brain.head.profile.fill", color: .vqPurple, unit: "min",
-                data: snaps.compactMap { s in s.mindfulMinutes.map { (s.date, $0) } },
-                latestValue: snaps.last?.mindfulMinutes, useBars: true
-            ))
+            let data = snaps.compactMap { s in s.mindfulMinutes.map { (s.date, $0) } }
+            if !data.isEmpty {
+                candidates.append(MetricCardData(
+                    id: "mindful", title: "Mindful Minutes", icon: "brain.head.profile.fill", color: .vqPurple, unit: "min",
+                    data: data, latestValue: snaps.last?.mindfulMinutes, useBars: true
+                ))
+            }
         }
         if enabledOptional.contains("vo2Max") {
-            cards.append(MetricCardData(
-                id: "vo2Max", title: "VO2 Max", icon: "lungs.fill", color: .vqBlue, unit: "mL/kg/min",
-                data: snaps.compactMap { s in s.vo2Max.map { (s.date, $0) } },
-                latestValue: snaps.last?.vo2Max, useBars: false
-            ))
+            let data = snaps.compactMap { s in s.vo2Max.map { (s.date, $0) } }
+            if !data.isEmpty {
+                candidates.append(MetricCardData(
+                    id: "vo2Max", title: "VO2 Max", icon: "lungs.fill", color: .vqBlue, unit: "mL/kg/min",
+                    data: data, latestValue: snaps.last?.vo2Max, useBars: false
+                ))
+            }
         }
         if enabledOptional.contains("spo2") {
-            cards.append(MetricCardData(
-                id: "spo2", title: "Blood Oxygen", icon: "drop.fill", color: .vqOrange, unit: "%",
-                data: snaps.compactMap { s in s.oxygenSaturation.map { (s.date, $0 * 100) } },
-                latestValue: snaps.last?.oxygenSaturation.map { $0 * 100 }, useBars: false
-            ))
+            let data = snaps.compactMap { s in s.oxygenSaturation.map { (s.date, $0 * 100) } }
+            if !data.isEmpty {
+                candidates.append(MetricCardData(
+                    id: "spo2", title: "Blood Oxygen", icon: "drop.fill", color: .vqOrange, unit: "%",
+                    data: data, latestValue: snaps.last?.oxygenSaturation.map { $0 * 100 }, useBars: false
+                ))
+            }
         }
 
-        return cards
+        return candidates
     }
 
+    @ViewBuilder
     private var recentChartsSection: some View {
         let cards = metricCards
-        return VStack(alignment: .leading, spacing: 10) {
+        if !cards.isEmpty {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Metrics")
                     .font(.vqHeadline)
@@ -386,8 +460,11 @@ struct HomeView: View {
                 }
             }
 
-            MetricCardCarousel(cards: cards, autoRotate: true)
-                .frame(height: 240)
+            MetricCardCarousel(cards: cards, autoRotate: true) { card in
+                    selectedMetricCard = card
+                }
+                .frame(height: 220)
+        }
         }
     }
 
@@ -406,8 +483,13 @@ struct HomeView: View {
                     }
 
                     ForEach(Array(viewModel.activeQuests.prefix(3).enumerated()), id: \.element.id) { index, quest in
-                        CompactQuestRow(quest: quest)
-                            .slideIn(appeared: appeared, delay: 0.3 + Double(index) * 0.08)
+                        Button {
+                            selectedQuest = quest
+                        } label: {
+                            CompactQuestRow(quest: quest)
+                        }
+                        .buttonStyle(.plain)
+                        .slideIn(appeared: appeared, delay: 0.3 + Double(index) * 0.08)
                     }
                 }
             }
@@ -421,17 +503,24 @@ struct HomeView: View {
         switch hour {
         case 5..<12: return "Good Morning"
         case 12..<17: return "Good Afternoon"
-        case 17..<22: return "Good Evening"
-        default: return "Night Owl"
+        default: return "Good Evening"
         }
     }
 
-    private func mascotSpeech(_ tier: ScoreTier) -> String {
+    private var sproutMessage: String {
+        if let cached = cachedSproutMessage {
+            return cached
+        }
+        return "Hey! I'm Nudge. Let's do this together!"
+    }
+
+    private func updateSproutMessage() {
         let snap = viewModel.todaySnapshot
         let recovery = snap?.recoveryScore ?? 0
         let sleep = snap?.sleepScore ?? 0
         let activity = snap?.activityScore ?? 0
-        return SproutDialogue.pick(recovery: recovery, sleep: sleep, activity: activity)
+        let trends = SproutDialogue.buildContext(from: viewModel.recentSnapshots)
+        cachedSproutMessage = SproutDialogue.pick(recovery: recovery, sleep: sleep, activity: activity, trends: trends)
     }
 
     private func formatNumber(_ n: Int) -> String {
@@ -632,6 +721,7 @@ struct MetricCardData: Identifiable {
 struct MetricCardCarousel: View {
     let cards: [MetricCardData]
     var autoRotate: Bool = false
+    var onCardTap: ((MetricCardData) -> Void)?
 
     @State private var currentIndex: Int = 0
     @GestureState private var dragOffset: CGFloat = 0
@@ -717,6 +807,16 @@ struct MetricCardCarousel: View {
                                 axis: (x: 0, y: 1, z: 0),
                                 perspective: 0.5
                             )
+                            .onTapGesture {
+                                if index == currentIndex {
+                                    onCardTap?(card)
+                                } else {
+                                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                        currentIndex = index
+                                    }
+                                    resetAutoRotate()
+                                }
+                            }
                     }
                 }
                 .offset(x: xOffset)
@@ -892,47 +992,47 @@ struct MetricCard: View {
     }
 }
 
-// MARK: - Toolbar XP Bar (level title + progress bar inline)
+// MARK: - Date Navigator
 
-struct ToolbarXPBar: View {
-    let level: Int
-    let title: String
-    let progress: Double
-    let xpToNext: Int
-
-    @State private var animatedProgress: Double = 0
-    private let barWidth: CGFloat = 140
+struct DateNavigator: View {
+    let date: Date
+    let isToday: Bool
+    let onPrevious: () -> Void
+    let onNext: () -> Void
+    let onToday: () -> Void
 
     var body: some View {
-        VStack(alignment: .center, spacing: 3) {
-            HStack(spacing: 4) {
-                Text("Lv.\(level)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.vqYellow)
-
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.vqTextPrimary)
+        HStack(spacing: 12) {
+            Button(action: onPrevious) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.vqTextSecondary)
             }
 
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.vqTextPrimary.opacity(0.1))
-                    .frame(width: barWidth, height: 5)
+            VStack(spacing: 1) {
+                if isToday {
+                    Text("Today")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.vqTextPrimary)
+                } else {
+                    Button(action: onToday) {
+                        Text(date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.vqTextPrimary)
+                    }
+                }
 
-                Capsule()
-                    .fill(LinearGradient.xpBar)
-                    .frame(width: max(0, barWidth * animatedProgress), height: 5)
+                Text(date.formatted(.dateTime.month(.wide).day().year()))
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.vqTextSecondary.opacity(0.6))
             }
 
-            Text("\(xpToNext) XP to next")
-                .font(.system(size: 9, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.vqTextSecondary.opacity(0.5))
-        }
-        .onAppear {
-            withAnimation(.spring(response: 1.0, dampingFraction: 0.7).delay(0.3)) {
-                animatedProgress = progress
+            Button(action: onNext) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(isToday ? Color.vqTextSecondary.opacity(0.2) : Color.vqTextSecondary)
             }
+            .disabled(isToday)
         }
     }
 }
@@ -941,17 +1041,24 @@ struct ToolbarXPBar: View {
 
 struct MetricPickerSheet: View {
     let profile: UserProfile?
+    let snapshots: [DailySnapshot]
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    private let optionalMetrics: [(id: String, title: String, icon: String, color: Color, description: String)] = [
-        ("distance", "Distance", "figure.walk.motion", .vqCyan, "Walking + running distance"),
-        ("flights", "Flights Climbed", "figure.stairs", .vqOrange, "Stair flights per day"),
-        ("bodyFat", "Body Fat %", "percent", .vqPink, "Body fat percentage"),
-        ("mindful", "Mindful Minutes", "brain.head.profile.fill", .vqPurple, "Meditation & mindfulness"),
-        ("vo2Max", "VO2 Max", "lungs.fill", .vqBlue, "Cardio fitness level"),
-        ("spo2", "Blood Oxygen", "drop.fill", .vqOrange, "Overnight SpO2 levels"),
+    private let allOptionalMetrics: [(id: String, title: String, icon: String, color: Color, description: String, hasData: ([DailySnapshot]) -> Bool)] = [
+        ("distance", "Distance", "figure.walk.motion", .vqCyan, "Walking + running distance", { $0.contains { $0.distanceWalkingRunning != nil } }),
+        ("flights", "Flights Climbed", "figure.stairs", .vqOrange, "Stair flights per day", { $0.contains { $0.flightsClimbed != nil } }),
+        ("bodyFat", "Body Fat %", "percent", .vqPink, "Body fat percentage", { $0.contains { $0.bodyFatPercentage != nil } }),
+        ("mindful", "Mindful Minutes", "brain.head.profile.fill", .vqPurple, "Meditation & mindfulness", { $0.contains { $0.mindfulMinutes != nil } }),
+        ("vo2Max", "VO2 Max", "lungs.fill", .vqBlue, "Cardio fitness level", { $0.contains { $0.vo2Max != nil } }),
+        ("spo2", "Blood Oxygen", "drop.fill", .vqOrange, "Overnight SpO2 levels", { $0.contains { $0.oxygenSaturation != nil } }),
     ]
+
+    private var availableMetrics: [(id: String, title: String, icon: String, color: Color, description: String)] {
+        allOptionalMetrics
+            .filter { $0.hasData(snapshots) }
+            .map { ($0.id, $0.title, $0.icon, $0.color, $0.description) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -960,7 +1067,13 @@ struct MetricPickerSheet: View {
 
                 List {
                     Section {
-                        ForEach(optionalMetrics, id: \.id) { metric in
+                        if availableMetrics.isEmpty {
+                            Text("No additional metric data found yet. Wear your Apple Watch to collect more data.")
+                                .font(.vqCaption)
+                                .foregroundStyle(Color.vqTextSecondary.opacity(0.6))
+                                .padding(.vertical, 8)
+                        }
+                        ForEach(availableMetrics, id: \.id) { metric in
                             let isEnabled = profile?.enabledOptionalMetrics.contains(metric.id) ?? false
                             Button {
                                 toggleMetric(metric.id)

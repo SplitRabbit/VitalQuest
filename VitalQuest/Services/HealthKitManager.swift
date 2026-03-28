@@ -27,6 +27,27 @@ struct SleepData {
     var wakeTime: Date?
 }
 
+struct HRVSummary {
+    var mean: Double
+    var min: Double
+    var max: Double
+    var sampleCount: Int
+}
+
+struct HeartRateSummary {
+    var mean: Double
+    var min: Double
+    var max: Double
+}
+
+struct WorkoutSummary {
+    var count: Int
+    var types: [String]
+    var totalDurationMinutes: Double
+    var totalCalories: Double
+    var totalDistanceMeters: Double
+}
+
 struct DailyHealthData {
     var date: Date
     var steps: Int
@@ -34,7 +55,8 @@ struct DailyHealthData {
     var exerciseMinutes: Double
     var standMinutes: Double
     var restingHeartRate: Double?
-    var hrvSDNN: Double?
+    var hrvSummary: HRVSummary?
+    var heartRateSummary: HeartRateSummary?
     var sleep: SleepData?
     var vo2Max: Double?
     var oxygenSaturation: Double?
@@ -45,13 +67,13 @@ struct DailyHealthData {
     var distanceWalkingRunning: Double?
     var flightsClimbed: Int?
     var mindfulMinutes: Double?
-    var workoutCount: Int
-    var workoutTypes: [String]
+    var workouts: WorkoutSummary
 }
 
 @Observable
 final class HealthKitManager: HealthKitDataProvider {
-    private let healthStore = HKHealthStore()
+    let exposedHealthStore = HKHealthStore()
+    private var healthStore: HKHealthStore { exposedHealthStore }
     private(set) var isAuthorized = false
     private(set) var authorizationError: String?
 
@@ -151,16 +173,53 @@ final class HealthKitManager: HealthKitDataProvider {
         return samples.first?.quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
     }
 
-    // MARK: - HRV
+    // MARK: - HRV (all daily samples)
 
     func fetchHRV(for date: Date) async throws -> Double? {
+        let summary = try await fetchHRVSummary(for: date)
+        return summary?.mean
+    }
+
+    func fetchHRVSummary(for date: Date) async throws -> HRVSummary? {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .day, value: 1, to: start)!
         let samples = try await fetchSamples(
             type: HKQuantityType(.heartRateVariabilitySDNN),
-            start: Calendar.current.startOfDay(for: date),
-            end: Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: date))!,
-            limit: 1
+            start: start,
+            end: end,
+            limit: HKObjectQueryNoLimit
         )
-        return samples.first?.quantity.doubleValue(for: .secondUnit(with: .milli))
+        guard !samples.isEmpty else { return nil }
+        let values = samples.map { $0.quantity.doubleValue(for: .secondUnit(with: .milli)) }
+        return HRVSummary(
+            mean: values.reduce(0, +) / Double(values.count),
+            min: values.min()!,
+            max: values.max()!,
+            sampleCount: values.count
+        )
+    }
+
+    // MARK: - Heart Rate (daily summary stats)
+
+    func fetchHeartRateSummary(for date: Date) async throws -> HeartRateSummary? {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        let end = calendar.date(byAdding: .day, value: 1, to: start)!
+        let bpmUnit = HKUnit.count().unitDivided(by: .minute())
+        let samples = try await fetchSamples(
+            type: HKQuantityType(.heartRate),
+            start: start,
+            end: end,
+            limit: HKObjectQueryNoLimit
+        )
+        guard !samples.isEmpty else { return nil }
+        let values = samples.map { $0.quantity.doubleValue(for: bpmUnit) }
+        return HeartRateSummary(
+            mean: values.reduce(0, +) / Double(values.count),
+            min: values.min()!,
+            max: values.max()!
+        )
     }
 
     // MARK: - Sleep Analysis
@@ -251,26 +310,55 @@ final class HealthKitManager: HealthKitDataProvider {
         let start = calendar.startOfDay(for: date)
         let end = calendar.date(byAdding: .day, value: 1, to: start)!
 
+        // Cumulative metrics
         async let stepsResult = fetchCumulativeSum(type: .stepCount, start: start, end: end, unit: .count())
         async let caloriesResult = fetchCumulativeSum(type: .activeEnergyBurned, start: start, end: end, unit: .kilocalorie())
         async let exerciseResult = fetchCumulativeSum(type: .appleExerciseTime, start: start, end: end, unit: .minute())
         async let standResult = fetchCumulativeSum(type: .appleStandTime, start: start, end: end, unit: .minute())
-        async let rhrResult = fetchRestingHeartRate(for: date)
-        async let hrvResult = fetchHRV(for: date)
-        async let sleepResult = fetchSleepAnalysis(for: date)
-        async let workoutsResult = fetchWorkouts(for: date)
-        async let weightResult = fetchLatestSample(type: .bodyMass, for: date, unit: .gramUnit(with: .kilo))
-        async let bodyFatResult = fetchLatestSample(type: .bodyFatPercentage, for: date, unit: .percent())
         async let distanceResult = fetchCumulativeSum(type: .distanceWalkingRunning, start: start, end: end, unit: .meter())
         async let flightsResult = fetchCumulativeSum(type: .flightsClimbed, start: start, end: end, unit: .count())
         async let mindfulResult = fetchMindfulMinutes(start: start, end: end)
 
-        let (steps, calories, exercise, stand, rhr, hrv, sleep, workouts,
-             weight, bodyFat, distance, flights, mindful) = try await (
+        // Cardiac
+        async let rhrResult = fetchRestingHeartRate(for: date)
+        async let hrvResult = fetchHRVSummary(for: date)
+        async let hrResult = fetchHeartRateSummary(for: date)
+
+        // Sleep
+        async let sleepResult = fetchSleepAnalysis(for: date)
+
+        // Body
+        async let weightResult = fetchLatestSample(type: .bodyMass, for: date, unit: .gramUnit(with: .kilo))
+        async let bodyFatResult = fetchLatestSample(type: .bodyFatPercentage, for: date, unit: .percent())
+
+        // Metrics that were previously hardcoded to nil
+        async let vo2Result = fetchLatestSample(type: .vo2Max, for: date, unit: HKUnit.literUnit(with: .milli).unitDivided(by: .gramUnit(with: .kilo).unitMultiplied(by: .minute())))
+        async let spo2Result = fetchLatestSample(type: .oxygenSaturation, for: date, unit: .percent())
+        async let respResult = fetchLatestSample(type: .respiratoryRate, for: date, unit: HKUnit.count().unitDivided(by: .minute()))
+        async let tempResult = fetchWristTemperature(for: date)
+
+        // Workouts
+        async let workoutsResult = fetchWorkouts(for: date)
+
+        let (steps, calories, exercise, stand, distance, flights, mindful,
+             rhr, hrvSummary, hrSummary, sleep, weight, bodyFat,
+             vo2, spo2, resp, temp, workouts) = try await (
             stepsResult, caloriesResult, exerciseResult, standResult,
-            rhrResult, hrvResult, sleepResult, workoutsResult,
-            weightResult, bodyFatResult, distanceResult, flightsResult, mindfulResult
+            distanceResult, flightsResult, mindfulResult,
+            rhrResult, hrvResult, hrResult, sleepResult,
+            weightResult, bodyFatResult,
+            vo2Result, spo2Result, respResult, tempResult, workoutsResult
         )
+
+        // Build workout summary
+        var totalWorkoutDuration = 0.0
+        var totalWorkoutCalories = 0.0
+        var totalWorkoutDistance = 0.0
+        for w in workouts {
+            totalWorkoutDuration += w.duration / 60.0
+            totalWorkoutCalories += w.totalEnergyBurned?.doubleValue(for: .kilocalorie()) ?? 0
+            totalWorkoutDistance += w.totalDistance?.doubleValue(for: .meter()) ?? 0
+        }
 
         return DailyHealthData(
             date: start,
@@ -279,20 +367,42 @@ final class HealthKitManager: HealthKitDataProvider {
             exerciseMinutes: exercise,
             standMinutes: stand,
             restingHeartRate: rhr,
-            hrvSDNN: hrv,
+            hrvSummary: hrvSummary,
+            heartRateSummary: hrSummary,
             sleep: sleep,
-            vo2Max: nil, // Phase 3
-            oxygenSaturation: nil,
-            respiratoryRate: nil,
-            wristTemperature: nil,
+            vo2Max: vo2,
+            oxygenSaturation: spo2,
+            respiratoryRate: resp,
+            wristTemperature: temp,
             bodyMass: weight,
             bodyFatPercentage: bodyFat,
             distanceWalkingRunning: distance > 0 ? distance : nil,
             flightsClimbed: flights > 0 ? Int(flights) : nil,
             mindfulMinutes: mindful > 0 ? mindful : nil,
-            workoutCount: workouts.count,
-            workoutTypes: workouts.map { $0.workoutActivityType.name }
+            workouts: WorkoutSummary(
+                count: workouts.count,
+                types: workouts.map { $0.workoutActivityType.name },
+                totalDurationMinutes: totalWorkoutDuration,
+                totalCalories: totalWorkoutCalories,
+                totalDistanceMeters: totalWorkoutDistance
+            )
         )
+    }
+
+    // MARK: - Wrist Temperature
+
+    private func fetchWristTemperature(for date: Date) async -> Double? {
+        guard #available(iOS 17.0, *) else { return nil }
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return nil }
+        let samples = try? await fetchSamples(
+            type: HKQuantityType(.appleSleepingWristTemperature),
+            start: start,
+            end: end,
+            limit: 1
+        )
+        return samples?.first?.quantity.doubleValue(for: .degreeCelsius())
     }
 
     // MARK: - Historical Import

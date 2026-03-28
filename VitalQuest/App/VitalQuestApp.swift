@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct VitalQuestApp: App {
+struct NudgeApp: App {
     let modelContainer: ModelContainer
     @State private var healthKitManager: HealthKitManager
     @State private var mockHealthKitManager: MockHealthKitManager
@@ -14,6 +14,9 @@ struct VitalQuestApp: App {
     @State private var dataExportService: DataExportService
     @State private var analyticsEngine: AnalyticsEngine
     @State private var mlModelManager: MLModelManager
+    @State private var rawSampleStore: RawSampleStore
+    @State private var rawSampleCollector: RawSampleCollector
+    @State private var feedService: FeedService
 
     private let useMock: Bool
 
@@ -31,7 +34,10 @@ struct VitalQuestApp: App {
             Quest.self,
             Achievement.self,
             UserProfile.self,
-            JournalEntry.self
+            JournalEntry.self,
+            CustomLog.self,
+            FeedItem.self,
+            Activity.self
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
@@ -51,7 +57,11 @@ struct VitalQuestApp: App {
         let export = DataExportService(modelContext: context)
         let analytics = AnalyticsEngine(modelContext: context, baselineEngine: baseline)
         let ml = MLModelManager()
-        ml.loadModels()
+        ml.loadSavedModels()
+        let rawStore = RawSampleStore()
+        export.rawSampleStore = rawStore
+        let rawCollector = RawSampleCollector(healthStore: hkManager.exposedHealthStore, store: rawStore)
+        let feed = FeedService(modelContext: context)
 
         _healthKitManager = State(initialValue: hkManager)
         _mockHealthKitManager = State(initialValue: mockManager)
@@ -63,6 +73,12 @@ struct VitalQuestApp: App {
         _dataExportService = State(initialValue: export)
         _analyticsEngine = State(initialValue: analytics)
         _mlModelManager = State(initialValue: ml)
+        _rawSampleStore = State(initialValue: rawStore)
+        _rawSampleCollector = State(initialValue: rawCollector)
+        _feedService = State(initialValue: feed)
+
+        // Seed default activities
+        Activity.seedDefaults(context: context)
 
         // Seed mock data in simulator if DB is empty
         if useMock {
@@ -83,6 +99,9 @@ struct VitalQuestApp: App {
                 .environment(dataExportService)
                 .environment(analyticsEngine)
                 .environment(mlModelManager)
+                .environment(rawSampleStore)
+                .environment(rawSampleCollector)
+                .environment(feedService)
         }
         .modelContainer(modelContainer)
     }
@@ -107,7 +126,14 @@ struct VitalQuestApp: App {
             snap.exerciseMinutes = Double.random(in: 10...65)
             snap.standMinutes = Double.random(in: 30...100)
             snap.restingHeartRate = Double.random(in: 56...70) - (Double(offset) * 0.05) // slight improvement trend
-            snap.hrvSDNN = Double.random(in: 28...58) + (Double(offset) * 0.08) // slight improvement trend
+            let hrvMean = Double.random(in: 28...58) + (Double(offset) * 0.08) // slight improvement trend
+            snap.hrvSDNN = hrvMean
+            snap.hrvMin = hrvMean - Double.random(in: 5...15)
+            snap.hrvMax = hrvMean + Double.random(in: 5...15)
+            snap.hrvSampleCount = Int.random(in: 3...12)
+            snap.heartRateMean = Double.random(in: 65...85)
+            snap.heartRateMin = Double.random(in: 48...62)
+            snap.heartRateMax = Double.random(in: 100...170)
             let sleepTotal = Double.random(in: 360...510)
             let deepRatio = Double.random(in: 0.13...0.22)
             let remRatio = Double.random(in: 0.18...0.26)
@@ -123,6 +149,11 @@ struct VitalQuestApp: App {
             snap.workoutCount = Int.random(in: 0...2)
             let workoutOptions = ["Running", "Cycling", "Yoga", "Swimming"]
             snap.workoutTypes = snap.workoutCount > 0 ? [workoutOptions[Int.random(in: 0..<workoutOptions.count)]] : []
+            if snap.workoutCount > 0 {
+                snap.workoutDurationMinutes = Double.random(in: 20...75)
+                snap.workoutCalories = Double.random(in: 150...500)
+                snap.workoutDistanceMeters = Double.random(in: 2000...10000)
+            }
 
             let sleepScore = Double.random(in: 40...90)
             snap.recoveryScore = Double.random(in: 45...92)
@@ -174,19 +205,7 @@ struct VitalQuestApp: App {
         // Seed journal entries for ~20 of the 30 days
         let journalDescriptor = FetchDescriptor<JournalEntry>()
         if (try? context.fetchCount(journalDescriptor)) == 0 {
-            let moods: [String] = Mood.allCases.map(\.rawValue)
-            let noteOptions: [String?] = [
-                nil, nil, nil, // Most days no notes
-                "Felt great after morning run",
-                "Rough night, woke up a few times",
-                "Good energy all day",
-                "Ate too late, couldn't sleep well",
-                "Stayed on top of hydration today",
-                nil,
-            ]
-
             for offset in 0..<30 {
-                // Skip ~10 random days
                 guard offset % 3 != 2 else { continue }
 
                 let date = calendar.date(byAdding: .day, value: -offset, to: today)!
@@ -195,15 +214,105 @@ struct VitalQuestApp: App {
                     hadCoffee: Bool.random(),
                     hadAlcohol: offset % 5 == 0,
                     stayedHydrated: Double.random(in: 0...1) > 0.3,
-                    tookSupplements: Double.random(in: 0...1) > 0.5,
                     lateMeal: Double.random(in: 0...1) > 0.7,
-                    screenBeforeBed: Double.random(in: 0...1) > 0.4,
-                    feltStressed: Double.random(in: 0...1) > 0.7,
-                    feltSick: Double.random(in: 0...1) > 0.9,
-                    mood: moods[Int.random(in: 0..<moods.count)],
-                    notes: noteOptions[Int.random(in: 0..<noteOptions.count)]
+                    feltStressed: Double.random(in: 0...1) > 0.7
                 )
                 context.insert(entry)
+            }
+        }
+
+        // Seed feed items so the Feed tab has data
+        let feedDescriptor = FetchDescriptor<FeedItem>()
+        if (try? context.fetchCount(feedDescriptor)) == 0 {
+            let workoutTypes = ["Running", "Cycling", "Yoga", "Swimming", "Hiking", "Strength Training"]
+            let workoutIcons = ["figure.run", "figure.outdoor.cycle", "figure.yoga", "figure.pool.swim", "figure.hiking", "dumbbell.fill"]
+
+            for offset in 0..<20 {
+                let date = calendar.date(byAdding: .day, value: -offset, to: today)!
+
+                // Workout (most days)
+                if offset % 3 != 2 {
+                    let idx = Int.random(in: 0..<workoutTypes.count)
+                    let duration = Double.random(in: 20...75)
+                    let cal = Double.random(in: 150...500)
+                    let dist = Double.random(in: 2000...10000)
+                    let detail = "\(Int(duration)) min \u{2022} \(Int(cal)) cal \u{2022} \(String(format: "%.1f", dist / 1000)) km"
+                    let item = FeedItem(
+                        type: .workout,
+                        title: workoutTypes[idx],
+                        detail: detail,
+                        icon: workoutIcons[idx],
+                        accentColorName: "pink",
+                        visibility: .private,
+                        metricValue: duration,
+                        metricUnit: "min"
+                    )
+                    item.timestamp = date.addingTimeInterval(Double.random(in: 25200...64800))
+                    context.insert(item)
+                }
+
+                // Achievement (occasional)
+                if offset == 1 {
+                    let item = FeedItem(
+                        type: .achievement,
+                        title: "Step Master",
+                        detail: "Hit 10,000 steps 7 days in a row",
+                        icon: "trophy.fill",
+                        accentColorName: "yellow",
+                        visibility: .private,
+                        metricValue: 150,
+                        metricUnit: "XP"
+                    )
+                    item.timestamp = date.addingTimeInterval(50000)
+                    context.insert(item)
+                }
+
+                // Streak milestone
+                if offset == 3 {
+                    let item = FeedItem(
+                        type: .streakUpdate,
+                        title: "10-Day Streak",
+                        detail: "Consistency pays off",
+                        icon: "flame.fill",
+                        accentColorName: "orange",
+                        visibility: .private,
+                        metricValue: 10,
+                        metricUnit: "days"
+                    )
+                    item.timestamp = date.addingTimeInterval(45000)
+                    context.insert(item)
+                }
+
+                // Level up
+                if offset == 7 {
+                    let item = FeedItem(
+                        type: .milestone,
+                        title: "Level 5",
+                        detail: "Reached Trailblazer rank",
+                        icon: "arrow.up.circle.fill",
+                        accentColorName: "green",
+                        visibility: .private
+                    )
+                    item.timestamp = date.addingTimeInterval(55000)
+                    context.insert(item)
+                }
+
+                // Personal best
+                if offset == 5 {
+                    let item = FeedItem(
+                        type: .personalBest,
+                        title: "Personal Best",
+                        detail: "Steps",
+                        icon: "trophy.fill",
+                        accentColorName: "yellow",
+                        visibility: .private,
+                        metricValue: 15234,
+                        metricUnit: "steps"
+                    )
+                    item.timestamp = date.addingTimeInterval(60000)
+                    context.insert(item)
+                }
+
             }
         }
 

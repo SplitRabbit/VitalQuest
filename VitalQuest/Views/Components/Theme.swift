@@ -168,11 +168,19 @@ extension View {
     }
 }
 
-// MARK: - Animated Background — bright & cheerful
+// MARK: - Animated Background — mood-reactive
 
 struct AnimatedMeshBackground: View {
+    /// Optional score (0–100) that shifts background hue. nil = neutral default.
+    var score: Double? = nil
+
     @Environment(\.colorScheme) private var colorScheme
-    @State private var phase: CGFloat = 0
+
+    /// Smoothly animated score for transitions between days
+    @State private var animatedScore: Double = 50
+
+    /// Normalized 0…1 where 0 = low, 1 = excellent
+    private var t: CGFloat { CGFloat(min(max(animatedScore, 0), 100) / 100.0) }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
@@ -180,28 +188,42 @@ struct AnimatedMeshBackground: View {
                 let time = timeline.date.timeIntervalSinceReferenceDate
                 let isDark = colorScheme == .dark
 
-                // Adaptive base gradient
+                // Score-reactive base gradient
+                // Low → warm/muted, Mid → neutral, High → cool green
                 let bg = Gradient(colors: isDark ? [
-                    Color(red: 0.06, green: 0.08, blue: 0.06),
-                    Color(red: 0.08, green: 0.10, blue: 0.08),
-                    Color(red: 0.07, green: 0.09, blue: 0.07),
+                    lerpColor(
+                        Color(red: 0.09, green: 0.06, blue: 0.06),
+                        Color(red: 0.06, green: 0.09, blue: 0.06), t: t),
+                    lerpColor(
+                        Color(red: 0.10, green: 0.08, blue: 0.07),
+                        Color(red: 0.07, green: 0.10, blue: 0.08), t: t),
+                    lerpColor(
+                        Color(red: 0.09, green: 0.07, blue: 0.07),
+                        Color(red: 0.06, green: 0.09, blue: 0.07), t: t),
                 ] : [
-                    Color(red: 0.92, green: 0.97, blue: 0.93),
-                    Color(red: 0.88, green: 0.96, blue: 0.90),
-                    Color(red: 0.93, green: 0.98, blue: 0.94),
+                    lerpColor(
+                        Color(red: 0.97, green: 0.93, blue: 0.91),
+                        Color(red: 0.91, green: 0.97, blue: 0.93), t: t),
+                    lerpColor(
+                        Color(red: 0.96, green: 0.91, blue: 0.88),
+                        Color(red: 0.88, green: 0.96, blue: 0.91), t: t),
+                    lerpColor(
+                        Color(red: 0.97, green: 0.94, blue: 0.92),
+                        Color(red: 0.92, green: 0.98, blue: 0.94), t: t),
                 ])
                 context.fill(
                     Path(CGRect(origin: .zero, size: size)),
                     with: .linearGradient(bg, startPoint: .zero, endPoint: CGPoint(x: size.width, y: size.height))
                 )
 
-                // Floating orbs — dimmer in dark mode
+                // Score-reactive floating orbs
                 let orbAlpha: CGFloat = isDark ? 0.08 : 1.0
+                // Low score → more orange/pink orbs, High score → more green/cyan
                 let orbs: [(Color, CGFloat, CGFloat, CGFloat)] = [
-                    (.vqGreen.opacity(0.12 * orbAlpha), 0.25, 0.15, 1.0),
-                    (.vqCyan.opacity(0.10 * orbAlpha), 0.75, 0.75, 1.3),
-                    (.vqYellow.opacity(0.08 * orbAlpha), 0.50, 0.45, 0.8),
-                    (.vqPink.opacity(0.06 * orbAlpha), 0.85, 0.25, 0.9),
+                    (lerpColor(.vqOrange, .vqGreen, t: t).opacity(0.12 * orbAlpha), 0.25, 0.15, 1.0),
+                    (lerpColor(.vqPink, .vqCyan, t: t).opacity(0.10 * orbAlpha), 0.75, 0.75, 1.3),
+                    (.vqYellow.opacity(0.08 * orbAlpha * (1.0 - t * 0.5)), 0.50, 0.45, 0.8),
+                    (lerpColor(.vqPink, .vqGreen, t: t).opacity(0.06 * orbAlpha), 0.85, 0.25, 0.9),
                 ]
                 for (color, baseX, baseY, speed) in orbs {
                     let x = size.width * (baseX + 0.08 * sin(time * speed * 0.3))
@@ -216,6 +238,29 @@ struct AnimatedMeshBackground: View {
             }
         }
         .ignoresSafeArea()
+        .onChange(of: score) { _, newScore in
+            withAnimation(.easeInOut(duration: 0.6)) {
+                animatedScore = newScore ?? 50
+            }
+        }
+        .onAppear {
+            animatedScore = score ?? 50
+        }
+    }
+
+    /// Linear interpolation between two colors
+    private func lerpColor(_ a: Color, _ b: Color, t: CGFloat) -> Color {
+        let t = min(max(t, 0), 1)
+        let ra = UIColor(a), rb = UIColor(b)
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+        ra.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        rb.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+        return Color(
+            red: r1 + (r2 - r1) * t,
+            green: g1 + (g2 - g1) * t,
+            blue: b1 + (b2 - b1) * t
+        ).opacity(a1 + (a2 - a1) * t)
     }
 }
 

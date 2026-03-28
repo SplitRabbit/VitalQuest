@@ -1,19 +1,6 @@
 import Foundation
 import SwiftData
 
-enum Mood: String, CaseIterable {
-    case great, good, okay, rough
-
-    var emoji: String {
-        switch self {
-        case .great: "😄"
-        case .good: "🙂"
-        case .okay: "😐"
-        case .rough: "😣"
-        }
-    }
-}
-
 @Model
 final class JournalEntry {
     @Attribute(.unique) var date: Date
@@ -24,7 +11,9 @@ final class JournalEntry {
     var lateMeal: Bool
     var feltStressed: Bool
 
-    var mood: String
+    /// Custom user-created log toggles active for this entry (keyed by CustomLog id)
+    var activeCustomLogs: [String]
+
     var lastUpdated: Date
 
     init(date: Date,
@@ -32,15 +21,30 @@ final class JournalEntry {
          hadAlcohol: Bool = false,
          stayedHydrated: Bool = false,
          lateMeal: Bool = false,
-         feltStressed: Bool = false,
-         mood: String = Mood.okay.rawValue) {
+         feltStressed: Bool = false) {
         self.date = date
         self.hadCoffee = hadCoffee
         self.hadAlcohol = hadAlcohol
         self.stayedHydrated = stayedHydrated
         self.lateMeal = lateMeal
         self.feltStressed = feltStressed
-        self.mood = mood
+        self.activeCustomLogs = []
         self.lastUpdated = Date()
+    }
+}
+
+/// Persistent custom log definition
+@Model
+final class CustomLog: Identifiable {
+    @Attribute(.unique) var id: String
+    var label: String
+    var icon: String
+    var createdAt: Date
+
+    init(label: String, icon: String) {
+        self.id = UUID().uuidString
+        self.label = label
+        self.icon = icon
+        self.createdAt = Date()
     }
 }

@@ -32,6 +32,10 @@ final class UserProfile {
     /// IDs of optional metrics the user has enabled (e.g. "vo2Max", "bodyFat", "distance")
     var enabledOptionalMetrics: [String]
 
+    // MARK: - Daily Log Preferences
+    /// Ordered factor IDs shown in the Daily Log grid (max 5). Mix of built-in IDs and CustomLog IDs.
+    var enabledLogFactors: [String] = ["coffee", "alcohol", "hydrated", "lateMeal", "stressed"]
+
     init() {
         self.id = "main"
         self.totalXP = 0
@@ -50,6 +54,7 @@ final class UserProfile {
         self.sleepGoalHours = 8.0
         self.exerciseGoalMinutes = 30
         self.enabledOptionalMetrics = []
+        self.enabledLogFactors = ["coffee", "alcohol", "hydrated", "lateMeal", "stressed"]
     }
 
     // MARK: - Level System

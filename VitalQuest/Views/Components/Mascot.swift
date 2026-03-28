@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Sproutie — a cute leaf/sprout mascot built entirely from SwiftUI shapes.
-/// Changes expression based on mood.
+/// Nudge's mascot — Sprout, a friendly little bean creature with arms, legs, and a leaf.
+/// Built entirely from SwiftUI shapes. Changes expression and posture based on mood.
 enum MascotMood {
     case happy, excited, sleepy, tired, cheering, thinking, surprised
 }
@@ -12,98 +12,180 @@ struct Mascot: View {
 
     @State private var bounce = false
     @State private var blink = false
-    @State private var wiggle = false
+    @State private var wobble = false
+    @State private var wave = false
 
     private var scale: CGFloat { size / 60 }
 
+    // Body colors
+    private var bodyGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.45, green: 0.90, blue: 0.55),
+                Color(red: 0.30, green: 0.75, blue: 0.42)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var bodyDark: Color {
+        Color(red: 0.18, green: 0.50, blue: 0.30)
+    }
+
+    private var leafColor: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 0.40, green: 0.85, blue: 0.35),
+                Color(red: 0.25, green: 0.65, blue: 0.28)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     var body: some View {
         ZStack {
-            // Body — rounded green blob
+            // Ground shadow
+            Ellipse()
+                .fill(bodyDark.opacity(0.12))
+                .frame(width: 30 * scale, height: 6 * scale)
+                .offset(y: 28 * scale)
+                .blur(radius: 2 * scale)
+
+            // Legs
+            legsView
+
+            // Body — bean/pill shape
             Capsule()
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.35, green: 0.85, blue: 0.50), Color(red: 0.20, green: 0.70, blue: 0.40)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 40 * scale, height: 48 * scale)
-                .offset(y: bounce ? -3 * scale : 0)
+                .fill(bodyGradient)
+                .frame(width: 32 * scale, height: 38 * scale)
+                .offset(y: bounce ? -2 * scale : 0)
+
+            // Body highlight
+            Ellipse()
+                .fill(.white.opacity(0.25))
+                .frame(width: 12 * scale, height: 16 * scale)
+                .offset(x: -5 * scale, y: -6 * scale + (bounce ? -2 * scale : 0))
+                .blur(radius: 2 * scale)
+
+            // Arms
+            armsView
 
             // Leaf on top
-            leaf
-                .offset(x: 2 * scale, y: -26 * scale)
-                .rotationEffect(.degrees(wiggle ? 15 : -5), anchor: .bottom)
-                .offset(y: bounce ? -3 * scale : 0)
+            leafView
 
             // Face
             faceView
-                .offset(y: bounce ? -3 * scale : 0)
+                .offset(y: 2 * scale + (bounce ? -2 * scale : 0))
 
-            // Cheeks (blush)
+            // Cheeks
             if mood == .happy || mood == .excited || mood == .cheering {
-                HStack(spacing: 22 * scale) {
-                    Circle()
-                        .fill(Color.pink.opacity(0.35))
-                        .frame(width: 8 * scale, height: 6 * scale)
-                    Circle()
-                        .fill(Color.pink.opacity(0.35))
-                        .frame(width: 8 * scale, height: 6 * scale)
+                HStack(spacing: 18 * scale) {
+                    Ellipse()
+                        .fill(Color.pink.opacity(0.22))
+                        .frame(width: 6 * scale, height: 4 * scale)
+                    Ellipse()
+                        .fill(Color.pink.opacity(0.22))
+                        .frame(width: 6 * scale, height: 4 * scale)
                 }
-                .offset(y: 4 * scale + (bounce ? -3 * scale : 0))
+                .offset(y: 8 * scale + (bounce ? -2 * scale : 0))
             }
 
-            // Arms
-            arms
-                .offset(y: bounce ? -3 * scale : 0)
-
-            // Feet
-            HStack(spacing: 10 * scale) {
-                Capsule()
-                    .fill(Color(red: 0.18, green: 0.55, blue: 0.30))
-                    .frame(width: 10 * scale, height: 6 * scale)
-                Capsule()
-                    .fill(Color(red: 0.18, green: 0.55, blue: 0.30))
-                    .frame(width: 10 * scale, height: 6 * scale)
-            }
-            .offset(y: 24 * scale)
-
-            // Mood-specific extras
+            // Mood extras
             moodExtras
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                 bounce = true
             }
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true).delay(0.2)) {
-                wiggle = true
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                wave = true
             }
-            // Blink loop
             startBlinking()
         }
     }
 
     // MARK: - Leaf
 
-    private var leaf: some View {
+    private var leafView: some View {
         ZStack {
             // Stem
             Capsule()
-                .fill(Color(red: 0.25, green: 0.65, blue: 0.35))
-                .frame(width: 3 * scale, height: 12 * scale)
+                .fill(Color(red: 0.30, green: 0.65, blue: 0.30))
+                .frame(width: 2.5 * scale, height: 8 * scale)
+                .offset(y: -20 * scale + (bounce ? -2 * scale : 0))
 
-            // Leaf shape
-            Ellipse()
-                .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.40, green: 0.90, blue: 0.45), Color(red: 0.25, green: 0.75, blue: 0.35)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 14 * scale, height: 10 * scale)
-                .rotationEffect(.degrees(-20))
-                .offset(x: 6 * scale, y: -8 * scale)
+            // Leaf blade
+            LeafShape()
+                .fill(leafColor)
+                .frame(width: 12 * scale, height: 10 * scale)
+                .rotationEffect(.degrees(wobble ? 8 : -8))
+                .offset(x: 4 * scale, y: -26 * scale + (bounce ? -2 * scale : 0))
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                        wobble = true
+                    }
+                }
+        }
+    }
+
+    // MARK: - Arms
+
+    @ViewBuilder
+    private var armsView: some View {
+        let armY = 2 * scale + (bounce ? -2 * scale : 0)
+
+        // Left arm
+        Capsule()
+            .fill(bodyGradient)
+            .frame(width: 6 * scale, height: 16 * scale)
+            .rotationEffect(.degrees(leftArmAngle), anchor: .top)
+            .offset(x: -19 * scale, y: armY)
+
+        // Right arm
+        Capsule()
+            .fill(bodyGradient)
+            .frame(width: 6 * scale, height: 16 * scale)
+            .rotationEffect(.degrees(rightArmAngle), anchor: .top)
+            .offset(x: 19 * scale, y: armY)
+    }
+
+    private var leftArmAngle: Double {
+        switch mood {
+        case .cheering: wave ? -40 : -20
+        case .excited: -35
+        case .tired, .sleepy: 15
+        case .thinking: -10
+        default: wave ? 12 : 18
+        }
+    }
+
+    private var rightArmAngle: Double {
+        switch mood {
+        case .cheering: wave ? 40 : 20
+        case .excited: 35
+        case .tired, .sleepy: -15
+        case .thinking: -25
+        default: wave ? -12 : -18
+        }
+    }
+
+    // MARK: - Legs
+
+    private var legsView: some View {
+        HStack(spacing: 10 * scale) {
+            // Left leg
+            Capsule()
+                .fill(bodyDark.opacity(0.6))
+                .frame(width: 8 * scale, height: 12 * scale)
+                .offset(y: 22 * scale + (bounce ? 1 * scale : 0))
+
+            // Right leg
+            Capsule()
+                .fill(bodyDark.opacity(0.6))
+                .frame(width: 8 * scale, height: 12 * scale)
+                .offset(y: 22 * scale + (bounce ? 1 * scale : 0))
         }
     }
 
@@ -129,17 +211,14 @@ struct Mascot: View {
 
     private var happyFace: some View {
         VStack(spacing: 4 * scale) {
-            // Eyes
             HStack(spacing: 12 * scale) {
                 eye(closed: blink)
                 eye(closed: blink)
             }
-            // Smile
             SmileShape()
-                .stroke(Color(red: 0.12, green: 0.40, blue: 0.20), lineWidth: 2 * scale)
-                .frame(width: 14 * scale, height: 6 * scale)
+                .stroke(bodyDark, lineWidth: 2 * scale)
+                .frame(width: 12 * scale, height: 5 * scale)
         }
-        .offset(y: -2 * scale)
     }
 
     private var excitedFace: some View {
@@ -148,48 +227,40 @@ struct Mascot: View {
                 starEye
                 starEye
             }
-            // Big open smile
             Ellipse()
-                .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                .frame(width: 12 * scale, height: 8 * scale)
+                .fill(bodyDark)
+                .frame(width: 8 * scale, height: 6 * scale)
         }
-        .offset(y: -2 * scale)
     }
 
     private var sleepyFace: some View {
         VStack(spacing: 4 * scale) {
             HStack(spacing: 12 * scale) {
-                // Closed sleepy eyes (curved lines)
                 Capsule()
-                    .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                    .frame(width: 8 * scale, height: 2 * scale)
+                    .fill(bodyDark)
+                    .frame(width: 7 * scale, height: 2 * scale)
                 Capsule()
-                    .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                    .frame(width: 8 * scale, height: 2 * scale)
+                    .fill(bodyDark)
+                    .frame(width: 7 * scale, height: 2 * scale)
             }
-            // Small o mouth
             Circle()
-                .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                .frame(width: 6 * scale, height: 6 * scale)
+                .fill(bodyDark)
+                .frame(width: 4 * scale, height: 4 * scale)
         }
-        .offset(y: -2 * scale)
     }
 
     private var tiredFace: some View {
         VStack(spacing: 5 * scale) {
             HStack(spacing: 12 * scale) {
-                // Droopy eyes
                 eye(closed: false)
                     .rotationEffect(.degrees(-10))
                 eye(closed: false)
                     .rotationEffect(.degrees(10))
             }
-            // Flat mouth
             Capsule()
-                .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                .frame(width: 10 * scale, height: 2 * scale)
+                .fill(bodyDark)
+                .frame(width: 9 * scale, height: 2 * scale)
         }
-        .offset(y: -2 * scale)
     }
 
     private var thinkingFace: some View {
@@ -197,34 +268,29 @@ struct Mascot: View {
             HStack(spacing: 12 * scale) {
                 eye(closed: false)
                 eye(closed: false)
-                    .offset(y: -2 * scale) // One eye raised
+                    .offset(y: -2 * scale)
             }
-            // Wavy mouth
             Capsule()
-                .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                .frame(width: 8 * scale, height: 2 * scale)
+                .fill(bodyDark)
+                .frame(width: 7 * scale, height: 2 * scale)
                 .offset(x: 3 * scale)
         }
-        .offset(y: -2 * scale)
     }
 
     private var surprisedFace: some View {
         VStack(spacing: 4 * scale) {
-            HStack(spacing: 14 * scale) {
-                // Big round eyes
+            HStack(spacing: 12 * scale) {
                 Circle()
-                    .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                    .frame(width: 7 * scale, height: 7 * scale)
+                    .fill(bodyDark)
+                    .frame(width: 6 * scale, height: 6 * scale)
                 Circle()
-                    .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                    .frame(width: 7 * scale, height: 7 * scale)
+                    .fill(bodyDark)
+                    .frame(width: 6 * scale, height: 6 * scale)
             }
-            // O mouth
             Circle()
-                .stroke(Color(red: 0.12, green: 0.40, blue: 0.20), lineWidth: 2 * scale)
-                .frame(width: 8 * scale, height: 8 * scale)
+                .stroke(bodyDark, lineWidth: 2 * scale)
+                .frame(width: 7 * scale, height: 7 * scale)
         }
-        .offset(y: -2 * scale)
     }
 
     // MARK: - Eye helpers
@@ -233,16 +299,16 @@ struct Mascot: View {
         Group {
             if closed {
                 Capsule()
-                    .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                    .frame(width: 7 * scale, height: 2 * scale)
+                    .fill(bodyDark)
+                    .frame(width: 6 * scale, height: 2 * scale)
             } else {
                 ZStack {
                     Circle()
-                        .fill(Color(red: 0.12, green: 0.40, blue: 0.20))
-                        .frame(width: 6 * scale, height: 6 * scale)
+                        .fill(bodyDark)
+                        .frame(width: 5.5 * scale, height: 5.5 * scale)
                     Circle()
                         .fill(.white)
-                        .frame(width: 2.5 * scale, height: 2.5 * scale)
+                        .frame(width: 2 * scale, height: 2 * scale)
                         .offset(x: 1 * scale, y: -1 * scale)
                 }
             }
@@ -255,71 +321,21 @@ struct Mascot: View {
             .foregroundStyle(Color.vqYellow)
     }
 
-    // MARK: - Arms
-
-    @ViewBuilder
-    private var arms: some View {
-        switch mood {
-        case .cheering, .excited:
-            // Arms up!
-            HStack(spacing: 36 * scale) {
-                Capsule()
-                    .fill(Color(red: 0.30, green: 0.78, blue: 0.42))
-                    .frame(width: 4 * scale, height: 14 * scale)
-                    .rotationEffect(.degrees(-30))
-                Capsule()
-                    .fill(Color(red: 0.30, green: 0.78, blue: 0.42))
-                    .frame(width: 4 * scale, height: 14 * scale)
-                    .rotationEffect(.degrees(30))
-            }
-            .offset(y: -6 * scale)
-        case .sleepy:
-            // Arms down
-            HStack(spacing: 34 * scale) {
-                Capsule()
-                    .fill(Color(red: 0.30, green: 0.78, blue: 0.42))
-                    .frame(width: 4 * scale, height: 12 * scale)
-                    .rotationEffect(.degrees(10))
-                Capsule()
-                    .fill(Color(red: 0.30, green: 0.78, blue: 0.42))
-                    .frame(width: 4 * scale, height: 12 * scale)
-                    .rotationEffect(.degrees(-10))
-            }
-            .offset(y: 4 * scale)
-        default:
-            // Normal arms
-            HStack(spacing: 36 * scale) {
-                Capsule()
-                    .fill(Color(red: 0.30, green: 0.78, blue: 0.42))
-                    .frame(width: 4 * scale, height: 12 * scale)
-                    .rotationEffect(.degrees(-15))
-                Capsule()
-                    .fill(Color(red: 0.30, green: 0.78, blue: 0.42))
-                    .frame(width: 4 * scale, height: 12 * scale)
-                    .rotationEffect(.degrees(15))
-            }
-            .offset(y: 0)
-        }
-    }
-
     // MARK: - Mood extras
 
     @ViewBuilder
     private var moodExtras: some View {
         switch mood {
         case .sleepy:
-            // Zzz bubbles
             ZzzBubbles(scale: scale)
-                .offset(x: 24 * scale, y: -20 * scale)
+                .offset(x: 22 * scale, y: -16 * scale)
         case .excited, .cheering:
-            // Sparkles around
             SparkleRing(scale: scale)
         case .surprised:
-            // Exclamation
             Text("!")
                 .font(.system(size: 12 * scale, weight: .black, design: .rounded))
                 .foregroundStyle(Color.vqYellow)
-                .offset(x: 22 * scale, y: -24 * scale)
+                .offset(x: 20 * scale, y: -22 * scale)
         default:
             EmptyView()
         }
@@ -334,6 +350,29 @@ struct Mascot: View {
                 withAnimation(.easeInOut(duration: 0.15)) { blink = false }
             }
         }
+    }
+}
+
+// MARK: - Leaf Shape
+
+struct LeafShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+
+        // Simple leaf: pointed tip left, rounded right
+        path.move(to: CGPoint(x: 0, y: h * 0.5))
+        path.addQuadCurve(
+            to: CGPoint(x: w, y: h * 0.1),
+            control: CGPoint(x: w * 0.5, y: -h * 0.2)
+        )
+        path.addQuadCurve(
+            to: CGPoint(x: 0, y: h * 0.5),
+            control: CGPoint(x: w * 0.5, y: h * 1.2)
+        )
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -393,7 +432,7 @@ struct SparkleRing: View {
                 Image(systemName: "sparkle")
                     .font(.system(size: (4 + CGFloat(i % 3) * 2) * scale))
                     .foregroundStyle(Color.vqYellow.opacity(twinkle ? 0.8 : 0.3))
-                    .offset(y: -34 * scale)
+                    .offset(y: -30 * scale)
                     .rotationEffect(.degrees(Double(i) * 60 + (spin ? 30 : 0)))
             }
         }
@@ -521,6 +560,12 @@ struct FloatingHeart: Identifiable {
                 VStack {
                     Mascot(mood: .surprised, size: 60)
                     Text("Surprised").font(.vqCaption).foregroundStyle(.white)
+                }
+            }
+            HStack(spacing: 30) {
+                VStack {
+                    Mascot(mood: .thinking, size: 60)
+                    Text("Thinking").font(.vqCaption).foregroundStyle(.white)
                 }
             }
             ConfettiBurst()

@@ -4,6 +4,7 @@ import Observation
 
 @Observable
 final class DashboardViewModel {
+    var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     var todaySnapshot: DailySnapshot?
     var recentSnapshots: [DailySnapshot] = [] // Last 7 days for charts
     var activeQuests: [Quest] = []
@@ -13,6 +14,27 @@ final class DashboardViewModel {
     var recentUnlocks: [String] = [] // Achievement IDs just unlocked
     var xpGainedThisSession = 0
 
+    var isToday: Bool {
+        Calendar.current.isDateInToday(selectedDate)
+    }
+
+    func goToPreviousDay() {
+        guard let prev = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) else { return }
+        selectedDate = prev
+    }
+
+    func goToNextDay() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        guard selectedDate < today,
+              let next = calendar.date(byAdding: .day, value: 1, to: selectedDate) else { return }
+        selectedDate = next
+    }
+
+    func goToToday() {
+        selectedDate = Calendar.current.startOfDay(for: Date())
+    }
+
     private var modelContext: ModelContext?
     private var healthKitManager: HealthKitDataProvider?
     private var scoringEngine: ScoringEngine?
@@ -20,6 +42,8 @@ final class DashboardViewModel {
     private var xpEngine: XPEngine?
     private var streakManager: StreakManager?
     private var questEngine: QuestEngine?
+    private var rawSampleCollector: RawSampleCollector?
+    private var feedService: FeedService?
 
     func configure(
         modelContext: ModelContext,
@@ -28,7 +52,9 @@ final class DashboardViewModel {
         baselineEngine: BaselineEngine,
         xpEngine: XPEngine,
         streakManager: StreakManager,
-        questEngine: QuestEngine
+        questEngine: QuestEngine,
+        rawSampleCollector: RawSampleCollector? = nil,
+        feedService: FeedService? = nil
     ) {
         self.modelContext = modelContext
         self.healthKitManager = healthKitManager
@@ -37,9 +63,11 @@ final class DashboardViewModel {
         self.xpEngine = xpEngine
         self.streakManager = streakManager
         self.questEngine = questEngine
+        self.rawSampleCollector = rawSampleCollector
+        self.feedService = feedService
     }
 
-    /// Full refresh: fetch health data, compute scores, award XP, update quests.
+    /// Load data for the selected date. Full scoring/XP only runs for today.
     func refresh() async {
         guard let modelContext, let healthKitManager, let scoringEngine,
               let baselineEngine, let xpEngine, let streakManager, let questEngine else { return }
@@ -53,87 +81,127 @@ final class DashboardViewModel {
                 try await healthKitManager.requestAuthorization()
             }
 
-            // Get or create today's snapshot
-            let today = Calendar.current.startOfDay(for: Date())
-            let snapshot = fetchOrCreateSnapshot(for: today, in: modelContext)
-
-            // Fetch today's health data
-            let healthData = try await healthKitManager.fetchDailySummary(for: today)
-
-            // Update raw metrics on snapshot
-            snapshot.steps = healthData.steps
-            snapshot.activeCalories = healthData.activeCalories
-            snapshot.exerciseMinutes = healthData.exerciseMinutes
-            snapshot.standMinutes = healthData.standMinutes
-            snapshot.restingHeartRate = healthData.restingHeartRate
-            snapshot.hrvSDNN = healthData.hrvSDNN
-            snapshot.workoutCount = healthData.workoutCount
-            snapshot.workoutTypes = healthData.workoutTypes
-            snapshot.bodyMass = healthData.bodyMass
-            snapshot.bodyFatPercentage = healthData.bodyFatPercentage
-            snapshot.distanceWalkingRunning = healthData.distanceWalkingRunning
-            snapshot.flightsClimbed = healthData.flightsClimbed
-            snapshot.mindfulMinutes = healthData.mindfulMinutes
-            if let sleep = healthData.sleep {
-                snapshot.sleepDurationMinutes = sleep.totalMinutes
-                snapshot.deepSleepMinutes = sleep.deepMinutes
-                snapshot.remSleepMinutes = sleep.remMinutes
-                snapshot.coreSleepMinutes = sleep.coreMinutes
-                snapshot.awakeMinutes = sleep.awakeMinutes
-                snapshot.bedtime = sleep.bedtime
-                snapshot.wakeTime = sleep.wakeTime
-            }
-
-            // Update baselines
-            baselineEngine.updateBaselines(from: healthData)
-
-            // Get context for scoring
-            let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
-            let prevSnapshot = fetchSnapshot(for: yesterday, in: modelContext)
-            let recentHRV = fetchRecentHRV(days: 3, before: today, in: modelContext)
-            let recentBedtimes = fetchRecentBedtimes(days: 7, before: today, in: modelContext)
-            let activeDays = countActiveDays(last: 7, before: today, in: modelContext)
-
-            // Get or create profile
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
             let profile = fetchOrCreateProfile(in: modelContext)
 
-            // Compute scores
-            scoringEngine.computeAllScores(
-                for: snapshot,
-                healthData: healthData,
-                previousDaySnapshot: prevSnapshot,
-                recentHRVValues: recentHRV,
-                recentBedtimes: recentBedtimes,
-                recentActiveDays: activeDays,
-                profile: profile
-            )
+            if isToday {
+                // Full refresh for today: fetch live data, score, XP, quests
+                let snapshot = fetchOrCreateSnapshot(for: today, in: modelContext)
+                let healthData = try await healthKitManager.fetchDailySummary(for: today)
 
-            snapshot.lastUpdated = Date()
+                snapshot.steps = healthData.steps
+                snapshot.activeCalories = healthData.activeCalories
+                snapshot.exerciseMinutes = healthData.exerciseMinutes
+                snapshot.standMinutes = healthData.standMinutes
+                snapshot.restingHeartRate = healthData.restingHeartRate
+                snapshot.hrvSDNN = healthData.hrvSummary?.mean
+                snapshot.hrvMin = healthData.hrvSummary?.min
+                snapshot.hrvMax = healthData.hrvSummary?.max
+                snapshot.hrvSampleCount = healthData.hrvSummary?.sampleCount
+                snapshot.heartRateMean = healthData.heartRateSummary?.mean
+                snapshot.heartRateMin = healthData.heartRateSummary?.min
+                snapshot.heartRateMax = healthData.heartRateSummary?.max
+                snapshot.workoutCount = healthData.workouts.count
+                snapshot.workoutTypes = healthData.workouts.types
+                snapshot.workoutDurationMinutes = healthData.workouts.totalDurationMinutes > 0 ? healthData.workouts.totalDurationMinutes : nil
+                snapshot.workoutCalories = healthData.workouts.totalCalories > 0 ? healthData.workouts.totalCalories : nil
+                snapshot.workoutDistanceMeters = healthData.workouts.totalDistanceMeters > 0 ? healthData.workouts.totalDistanceMeters : nil
+                snapshot.vo2Max = healthData.vo2Max
+                snapshot.oxygenSaturation = healthData.oxygenSaturation
+                snapshot.respiratoryRate = healthData.respiratoryRate
+                snapshot.wristTemperature = healthData.wristTemperature
+                snapshot.bodyMass = healthData.bodyMass
+                snapshot.bodyFatPercentage = healthData.bodyFatPercentage
+                snapshot.distanceWalkingRunning = healthData.distanceWalkingRunning
+                snapshot.flightsClimbed = healthData.flightsClimbed
+                snapshot.mindfulMinutes = healthData.mindfulMinutes
+                if let sleep = healthData.sleep {
+                    snapshot.sleepDurationMinutes = sleep.totalMinutes
+                    snapshot.deepSleepMinutes = sleep.deepMinutes
+                    snapshot.remSleepMinutes = sleep.remMinutes
+                    snapshot.coreSleepMinutes = sleep.coreMinutes
+                    snapshot.awakeMinutes = sleep.awakeMinutes
+                    snapshot.bedtime = sleep.bedtime
+                    snapshot.wakeTime = sleep.wakeTime
+                }
 
-            // Streak
-            streakManager.processCheckIn(profile: profile)
+                baselineEngine.updateBaselines(from: healthData)
 
-            // XP
-            let xp = xpEngine.evaluateDaily(snapshot: snapshot, profile: profile)
-            xpGainedThisSession = xp
+                let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+                let prevSnapshot = fetchSnapshot(for: yesterday, in: modelContext)
+                let recentHRV = fetchRecentHRV(days: 3, before: today, in: modelContext)
+                let recentBedtimes = fetchRecentBedtimes(days: 7, before: today, in: modelContext)
+                let activeDays = countActiveDays(last: 7, before: today, in: modelContext)
 
-            // Achievements
-            xpEngine.seedAchievementsIfNeeded()
-            recentUnlocks = xpEngine.checkAchievements(snapshot: snapshot, profile: profile)
+                scoringEngine.computeAllScores(
+                    for: snapshot,
+                    healthData: healthData,
+                    previousDaySnapshot: prevSnapshot,
+                    recentHRVValues: recentHRV,
+                    recentBedtimes: recentBedtimes,
+                    recentActiveDays: activeDays,
+                    profile: profile
+                )
 
-            // Quests
-            let _ = questEngine.generateDailyQuests(for: today)
-            let completedIDs = questEngine.evaluateQuests(snapshot: snapshot)
-            for _ in completedIDs {
-                let (questXP, _) = xpEngine.awardXP(.dailyQuestComplete, profile: profile)
-                xpGainedThisSession += questXP
-                profile.totalQuestsCompleted += 1
-                snapshot.questsCompleted += 1
+                snapshot.lastUpdated = Date()
+
+                streakManager.processCheckIn(profile: profile)
+
+                let xp = xpEngine.evaluateDaily(snapshot: snapshot, profile: profile)
+                xpGainedThisSession = xp
+
+                xpEngine.seedAchievementsIfNeeded()
+                recentUnlocks = xpEngine.checkAchievements(snapshot: snapshot, profile: profile)
+
+                let _ = questEngine.generateDailyQuests(for: today)
+                let completedIDs = questEngine.evaluateQuests(snapshot: snapshot)
+                for _ in completedIDs {
+                    let (questXP, _) = xpEngine.awardXP(.dailyQuestComplete, profile: profile)
+                    xpGainedThisSession += questXP
+                    profile.totalQuestsCompleted += 1
+                    snapshot.questsCompleted += 1
+                }
+
+                // Record feed items for today's events
+                if let feed = feedService {
+                    // Record workouts
+                    for workoutType in healthData.workouts.types {
+                        feed.recordWorkout(
+                            type: workoutType,
+                            durationMinutes: healthData.workouts.totalDurationMinutes / max(1.0, Double(healthData.workouts.count)),
+                            calories: healthData.workouts.totalCalories > 0 ? healthData.workouts.totalCalories / max(1.0, Double(healthData.workouts.count)) : nil,
+                            distanceMeters: healthData.workouts.totalDistanceMeters > 0 ? healthData.workouts.totalDistanceMeters / max(1.0, Double(healthData.workouts.count)) : nil
+                        )
+                    }
+
+                    // Record achievements
+                    for achievementID in recentUnlocks {
+                        let desc = FetchDescriptor<Achievement>(predicate: #Predicate { $0.id == achievementID })
+                        if let achievement = try? modelContext.fetch(desc).first {
+                            feed.recordAchievementUnlocked(achievement: achievement)
+                        }
+                    }
+
+                    // Quest completions and daily summaries excluded from feed per design
+                }
+
+                self.todaySnapshot = snapshot
+                self.activeQuests = questEngine.activeQuests()
+
+                // Collect raw samples in background (doesn't block UI)
+                if let collector = rawSampleCollector {
+                    Task.detached(priority: .utility) {
+                        await collector.collectRawSamples(for: today)
+                    }
+                }
+            } else {
+                // Past day: just read the stored snapshot
+                self.todaySnapshot = fetchSnapshot(for: selectedDate, in: modelContext)
+                self.activeQuests = []
             }
 
-            self.todaySnapshot = snapshot
-            self.recentSnapshots = fetchRecentSnapshots(days: 7, in: modelContext)
-            self.activeQuests = questEngine.activeQuests()
+            self.recentSnapshots = fetchRecentSnapshots(days: 7, before: selectedDate, in: modelContext)
             self.profile = profile
 
             try modelContext.save()
@@ -197,12 +265,12 @@ final class DashboardViewModel {
         return snapshots.compactMap { $0.bedtime }
     }
 
-    private func fetchRecentSnapshots(days: Int, in context: ModelContext) -> [DailySnapshot] {
+    private func fetchRecentSnapshots(days: Int, before date: Date, in context: ModelContext) -> [DailySnapshot] {
         let calendar = Calendar.current
-        let today = calendar.startOfDay(for: Date())
-        let start = calendar.date(byAdding: .day, value: -days, to: today)!
+        let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date))!
+        let start = calendar.date(byAdding: .day, value: -days, to: calendar.startOfDay(for: date))!
         var descriptor = FetchDescriptor<DailySnapshot>(
-            predicate: #Predicate { $0.date >= start },
+            predicate: #Predicate { $0.date >= start && $0.date < end },
             sortBy: [SortDescriptor(\.date)]
         )
         descriptor.fetchLimit = days + 1

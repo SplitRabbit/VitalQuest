@@ -12,10 +12,15 @@ struct ContentView: View {
                     .offset(y: selectedTab == 0 ? 0 : 10)
                     .allowsHitTesting(selectedTab == 0)
 
-                HistoryView()
+                FeedView()
                     .opacity(selectedTab == 1 ? 1 : 0)
                     .offset(y: selectedTab == 1 ? 0 : 10)
                     .allowsHitTesting(selectedTab == 1)
+
+                HistoryView()
+                    .opacity(selectedTab == 2 ? 1 : 0)
+                    .offset(y: selectedTab == 2 ? 0 : 10)
+                    .allowsHitTesting(selectedTab == 2)
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: selectedTab)
 
@@ -34,6 +39,7 @@ struct CustomTabBar: View {
 
     private let tabs: [(icon: String, label: String)] = [
         ("leaf.fill", "Home"),
+        ("text.bubble.fill", "Feed"),
         ("calendar", "History"),
     ]
 

@@ -13,6 +13,7 @@ protocol DataExportable {
 @Observable
 final class DataExportService {
     private let modelContext: ModelContext
+    var rawSampleStore: RawSampleStore?
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -123,7 +124,7 @@ final class DataExportService {
 
     func exportBundle() throws -> URL {
         let bundleDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitalQuestExport_\(Self.fileDateFormatter.string(from: Date()))")
+            .appendingPathComponent("NudgeExport_\(Self.fileDateFormatter.string(from: Date()))")
         try FileManager.default.createDirectory(at: bundleDir, withIntermediateDirectories: true)
 
         // Export all files into bundle directory
@@ -166,6 +167,15 @@ final class DataExportService {
         ]
         let metadataData = try JSONSerialization.data(withJSONObject: metadata, options: [.prettyPrinted, .sortedKeys])
         try metadataData.write(to: bundleDir.appendingPathComponent("metadata.json"))
+
+        // Include raw sample warehouse if available
+        if let rawStore = rawSampleStore {
+            let warehouseSrc = rawStore.warehouseURL
+            if FileManager.default.fileExists(atPath: warehouseSrc.path) {
+                let destWarehouse = bundleDir.appendingPathComponent("raw_samples.sqlite")
+                try? fm.copyItem(at: warehouseSrc, to: destWarehouse)
+            }
+        }
 
         return bundleDir
     }
@@ -246,13 +256,16 @@ extension DailySnapshot: DataExportable {
     static var csvHeader: String {
         let raw = [
             "date", "steps", "active_calories", "exercise_minutes", "stand_minutes",
-            "resting_heart_rate", "hrv_sdnn", "sleep_duration_minutes",
+            "resting_heart_rate", "hrv_sdnn", "hrv_min", "hrv_max", "hrv_sample_count",
+            "heart_rate_mean", "heart_rate_min", "heart_rate_max",
+            "sleep_duration_minutes",
             "deep_sleep_minutes", "rem_sleep_minutes", "core_sleep_minutes",
             "awake_minutes", "bedtime", "wake_time",
             "vo2_max", "oxygen_saturation", "respiratory_rate",
             "wrist_temperature", "body_mass", "body_fat_percentage",
             "distance_walking_running", "flights_climbed", "mindful_minutes",
-            "workout_count", "workout_types"
+            "workout_count", "workout_types",
+            "workout_duration_minutes", "workout_calories", "workout_distance_meters"
         ]
         let scores = ["recovery_score", "sleep_score", "activity_score"]
         let recoveryComp = recoveryComponentKeys.map { "recovery_\($0)" }
@@ -274,6 +287,12 @@ extension DailySnapshot: DataExportable {
             String(format: "%.2f", standMinutes),
             optionalString(restingHeartRate),
             optionalString(hrvSDNN),
+            optionalString(hrvMin),
+            optionalString(hrvMax),
+            optionalIntString(hrvSampleCount),
+            optionalString(heartRateMean),
+            optionalString(heartRateMin),
+            optionalString(heartRateMax),
             optionalString(sleepDurationMinutes),
             optionalString(deepSleepMinutes),
             optionalString(remSleepMinutes),
@@ -291,7 +310,10 @@ extension DailySnapshot: DataExportable {
             optionalIntString(flightsClimbed),
             optionalString(mindfulMinutes),
             String(workoutCount),
-            csvEscape(workoutTypes.joined(separator: ";"))
+            csvEscape(workoutTypes.joined(separator: ";")),
+            optionalString(workoutDurationMinutes),
+            optionalString(workoutCalories),
+            optionalString(workoutDistanceMeters)
         ]
         let scores: [String] = [
             optionalString(recoveryScore),

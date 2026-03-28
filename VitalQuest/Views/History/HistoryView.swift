@@ -4,6 +4,8 @@ import Charts
 
 struct HistoryView: View {
     @Query(sort: \DailySnapshot.date, order: .reverse) private var snapshots: [DailySnapshot]
+    @Query(sort: \JournalEntry.date, order: .reverse) private var journalEntries: [JournalEntry]
+    @Query(sort: \CustomLog.createdAt) private var customLogs: [CustomLog]
 
     @State private var selectedMetric: HistoryMetric = .recovery
     @State private var selectedSnapshot: DailySnapshot?
@@ -278,6 +280,38 @@ struct HistoryView: View {
             if let weight = snap.bodyMass {
                 MetricRow(icon: "scalemass.fill", label: "Weight", value: String(format: "%.1f kg", weight), color: .vqGreen)
             }
+
+            // Daily Log for this day
+            if let journal = journalEntryFor(date: snap.date) {
+                Divider().background(Color.vqTextPrimary.opacity(0.08))
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Daily Log")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.vqTextSecondary)
+
+                    let activeFactors = journalFactors(for: journal)
+                    if activeFactors.isEmpty {
+                        Text("Nothing logged")
+                            .font(.vqCaption)
+                            .foregroundStyle(Color.vqTextSecondary.opacity(0.5))
+                    } else {
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 8) {
+                            ForEach(activeFactors, id: \.label) { factor in
+                                VStack(spacing: 3) {
+                                    Image(systemName: factor.icon)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(Color.vqCyan)
+                                    Text(factor.label)
+                                        .font(.system(size: 8, weight: .medium, design: .rounded))
+                                        .foregroundStyle(Color.vqTextSecondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
         .vqGlowCard(color: selectedMetric.color)
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -330,6 +364,38 @@ struct HistoryView: View {
         return snapshots.first { calendar.isDate($0.date, inSameDayAs: date) }
     }
 
+    private func journalEntryFor(date: Date) -> JournalEntry? {
+        let calendar = Calendar.current
+        return journalEntries.first { calendar.isDate($0.date, inSameDayAs: date) }
+    }
+
+    private struct JournalFactor {
+        let icon: String
+        let label: String
+    }
+
+    private func journalFactors(for entry: JournalEntry) -> [JournalFactor] {
+        var factors: [JournalFactor] = []
+        let builtIns: [(Bool, String)] = [
+            (entry.hadCoffee, "coffee"),
+            (entry.hadAlcohol, "alcohol"),
+            (entry.stayedHydrated, "hydrated"),
+            (entry.lateMeal, "lateMeal"),
+            (entry.feltStressed, "stressed"),
+        ]
+        for (isOn, id) in builtIns {
+            if isOn, let def = builtInFactorDefs[id] {
+                factors.append(JournalFactor(icon: def.icon, label: def.label))
+            }
+        }
+        for logId in entry.activeCustomLogs {
+            if let log = customLogs.first(where: { $0.id == logId }) {
+                factors.append(JournalFactor(icon: log.icon, label: log.label))
+            }
+        }
+        return factors
+    }
+
     private func heatColor(value: Double) -> Color {
         guard value > 0 else { return Color.vqTextPrimary.opacity(0.03) }
         let maxVal: Double = switch selectedMetric {
@@ -346,6 +412,6 @@ struct HistoryView: View {
 
 #Preview {
     HistoryView()
-        .modelContainer(for: DailySnapshot.self, inMemory: true)
+        .modelContainer(for: [DailySnapshot.self, JournalEntry.self, CustomLog.self], inMemory: true)
         .withMockEnvironment()
 }

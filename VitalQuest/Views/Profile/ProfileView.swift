@@ -270,6 +270,23 @@ struct ProfileView: View {
                 goalRow(icon: "moon.fill", label: "Sleep Goal", value: "\(Int(profile.sleepGoalHours))h", color: .vqPurple)
                 goalRow(icon: "figure.run", label: "Exercise Goal", value: "\(Int(profile.exerciseGoalMinutes)) min", color: .vqGreen)
             }
+
+            NavigationLink {
+                ActivitiesView()
+            } label: {
+                HStack {
+                    Image(systemName: "figure.mixed.cardio")
+                        .foregroundStyle(Color.vqPink)
+                        .frame(width: 24)
+                    Text("Manage Activities")
+                        .font(.vqBody)
+                        .foregroundStyle(Color.vqTextSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.vqTextSecondary.opacity(0.3))
+                }
+            }
         }
         .vqCard()
     }

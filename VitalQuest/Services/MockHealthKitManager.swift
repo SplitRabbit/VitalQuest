@@ -61,14 +61,26 @@ final class MockHealthKitManager: HealthKitDataProvider {
     }
 
     func fetchDailySummary(for date: Date) async throws -> DailyHealthData {
-        DailyHealthData(
+        let hrvMean = Double.random(in: 25...65)
+        let workoutCount = Int.random(in: 0...2)
+        return DailyHealthData(
             date: Calendar.current.startOfDay(for: date),
             steps: Int.random(in: 4000...14000),
             activeCalories: Double.random(in: 200...800),
             exerciseMinutes: Double.random(in: 0...75),
             standMinutes: Double.random(in: 20...120),
             restingHeartRate: Double.random(in: 55...72),
-            hrvSDNN: Double.random(in: 25...65),
+            hrvSummary: HRVSummary(
+                mean: hrvMean,
+                min: hrvMean - Double.random(in: 5...15),
+                max: hrvMean + Double.random(in: 5...15),
+                sampleCount: Int.random(in: 3...12)
+            ),
+            heartRateSummary: HeartRateSummary(
+                mean: Double.random(in: 65...85),
+                min: Double.random(in: 50...65),
+                max: Double.random(in: 100...160)
+            ),
             sleep: try await fetchSleepAnalysis(for: date),
             vo2Max: nil,
             oxygenSaturation: nil,
@@ -79,8 +91,13 @@ final class MockHealthKitManager: HealthKitDataProvider {
             distanceWalkingRunning: Double.random(in: 2000...10000),
             flightsClimbed: Int.random(in: 2...15),
             mindfulMinutes: Bool.random() ? Double.random(in: 5...30) : nil,
-            workoutCount: Int.random(in: 0...2),
-            workoutTypes: Bool.random() ? ["Running"] : []
+            workouts: WorkoutSummary(
+                count: workoutCount,
+                types: workoutCount > 0 ? ["Running"] : [],
+                totalDurationMinutes: workoutCount > 0 ? Double.random(in: 20...60) : 0,
+                totalCalories: workoutCount > 0 ? Double.random(in: 150...400) : 0,
+                totalDistanceMeters: workoutCount > 0 ? Double.random(in: 2000...8000) : 0
+            )
         )
     }
 
@@ -116,7 +133,14 @@ extension DailySnapshot {
         snap.exerciseMinutes = Double.random(in: 15...60)
         snap.standMinutes = Double.random(in: 40...90)
         snap.restingHeartRate = Double.random(in: 56...68)
-        snap.hrvSDNN = Double.random(in: 30...55)
+        let hrvMean = Double.random(in: 30...55)
+        snap.hrvSDNN = hrvMean
+        snap.hrvMin = hrvMean - Double.random(in: 5...12)
+        snap.hrvMax = hrvMean + Double.random(in: 5...12)
+        snap.hrvSampleCount = Int.random(in: 3...10)
+        snap.heartRateMean = Double.random(in: 68...82)
+        snap.heartRateMin = Double.random(in: 50...62)
+        snap.heartRateMax = Double.random(in: 110...155)
         snap.sleepDurationMinutes = Double.random(in: 380...480)
         snap.deepSleepMinutes = Double.random(in: 60...100)
         snap.remSleepMinutes = Double.random(in: 70...120)
@@ -143,7 +167,14 @@ extension DailySnapshot {
             snap.activeCalories = Double.random(in: 200...700)
             snap.exerciseMinutes = Double.random(in: 0...75)
             snap.restingHeartRate = Double.random(in: 55...72)
-            snap.hrvSDNN = Double.random(in: 25...60)
+            let hrvMean = Double.random(in: 25...60)
+            snap.hrvSDNN = hrvMean
+            snap.hrvMin = hrvMean - Double.random(in: 5...12)
+            snap.hrvMax = hrvMean + Double.random(in: 5...12)
+            snap.hrvSampleCount = Int.random(in: 3...10)
+            snap.heartRateMean = Double.random(in: 65...85)
+            snap.heartRateMin = Double.random(in: 50...62)
+            snap.heartRateMax = Double.random(in: 100...160)
             snap.sleepDurationMinutes = Double.random(in: 300...510)
             snap.recoveryScore = Double.random(in: 40...95)
             snap.sleepScore = Double.random(in: 35...95)

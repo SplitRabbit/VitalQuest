@@ -63,7 +63,7 @@ struct SproutChatView: View {
                     inputBar
                 }
             }
-            .navigationTitle("Chat with Sproutie")
+            .navigationTitle("Chat with Nudge")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -181,7 +181,7 @@ struct SproutChatView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Talk to Sproutie...", text: $inputText)
+            TextField("Talk to Nudge...", text: $inputText)
                 .font(.system(size: 15))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
@@ -375,7 +375,7 @@ struct SproutChatView: View {
         "What do you call a sleeping dinosaur? A dino-snore! ...Get it? Because sleep is important? I'm hilarious.",
         "I told my watch I wanted to lose weight. It said 'stop asking me and start walking!' Harsh but fair.",
         "Why don't scientists trust atoms? Because they make up everything! ...Sorry, that has nothing to do with health. I just like it.",
-        "What's Sproutie's favorite exercise? Lunges. Because they really help me GROW. Okay I'll stop.",
+        "What's my favorite exercise? Squats. Because I'm already shaped like one. Okay I'll stop.",
         "How do trees get on the internet? They log in! ...Just like you should log your health data!",
     ]
 
@@ -389,9 +389,9 @@ struct SproutChatView: View {
     ]
 
     private let thankYou = [
-        "Aww, you're making me blush! (Can plants blush? I think I can.)",
+        "Aww, you're making me blush! (Can slimes blush? I think I'm glowing.)",
         "Right back at you! I love being your health buddy.",
-        "That means the world to me! Let's keep growing together.",
+        "That means the world to me! Let's keep going together.",
         "You're the best! Seriously, my favorite human.",
     ]
 

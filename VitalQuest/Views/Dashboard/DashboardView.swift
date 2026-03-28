@@ -8,6 +8,8 @@ struct DashboardView: View {
     @Environment(XPEngine.self) private var xpEngine
     @Environment(StreakManager.self) private var streakManager
     @Environment(QuestEngine.self) private var questEngine
+    @Environment(RawSampleCollector.self) private var rawSampleCollector
+    @Environment(FeedService.self) private var feedService
     @Environment(\.modelContext) private var modelContext
 
     @State private var viewModel = DashboardViewModel()
@@ -79,7 +81,9 @@ struct DashboardView: View {
                     baselineEngine: baselineEngine,
                     xpEngine: xpEngine,
                     streakManager: streakManager,
-                    questEngine: questEngine
+                    questEngine: questEngine,
+                    rawSampleCollector: rawSampleCollector,
+                    feedService: feedService
                 )
                 await viewModel.refresh()
             }
@@ -91,7 +95,7 @@ struct DashboardView: View {
                 }
                 Button("Later", role: .cancel) {}
             } message: {
-                Text("VitalQuest needs access to your health data to calculate scores. Please enable access in Settings.")
+                Text("Nudge needs access to your health data to calculate scores. Please enable access in Settings.")
             }
         }
     }

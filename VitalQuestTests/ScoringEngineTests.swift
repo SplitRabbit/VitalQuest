@@ -4,6 +4,7 @@ import SwiftData
 @testable import VitalQuest
 
 @Suite("Scoring Engine Tests")
+@MainActor
 struct ScoringEngineTests {
     let modelContainer: ModelContainer
     let baselineEngine: BaselineEngine

@@ -241,14 +241,14 @@ final class ScoringEngine {
             sleep: healthData.sleep,
             targetHours: profile.sleepGoalHours,
             recentBedtimes: recentBedtimes,
-            nighttimeHRV: healthData.hrvSDNN
+            nighttimeHRV: healthData.hrvSummary?.mean
         )
         snapshot.sleepScore = sleepResult.score
         snapshot.sleepComponents = sleepResult.components
 
         // Recovery Score
         let recoveryResult = computeRecoveryScore(
-            hrvSDNN: healthData.hrvSDNN,
+            hrvSDNN: healthData.hrvSummary?.mean,
             restingHeartRate: healthData.restingHeartRate,
             sleepScore: sleepResult.score,
             recentHRVValues: recentHRVValues,
@@ -262,7 +262,7 @@ final class ScoringEngine {
             steps: healthData.steps,
             activeCalories: healthData.activeCalories,
             exerciseMinutes: healthData.exerciseMinutes,
-            workoutTypes: healthData.workoutTypes,
+            workoutTypes: healthData.workouts.types,
             recentActiveDays: recentActiveDays,
             calorieGoal: profile.calorieGoal,
             stepGoal: profile.stepGoal
@@ -277,9 +277,9 @@ final class ScoringEngine {
         if healthData.activeCalories > 0 { available += 1 }
         if healthData.exerciseMinutes > 0 { available += 1 }
         if healthData.restingHeartRate != nil { available += 1 }
-        if healthData.hrvSDNN != nil { available += 1 }
+        if healthData.hrvSummary != nil { available += 1 }
         if healthData.sleep != nil { available += 1 }
-        if healthData.workoutCount > 0 { available += 1 }
+        if healthData.workouts.count > 0 { available += 1 }
         snapshot.dataCompleteness = Double(available) / Double(total)
     }
 

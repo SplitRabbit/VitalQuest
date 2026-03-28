@@ -13,7 +13,13 @@ final class DailySnapshot {
     var exerciseMinutes: Double
     var standMinutes: Double
     var restingHeartRate: Double?
-    var hrvSDNN: Double?
+    var hrvSDNN: Double? // Mean of all daily samples (was: single sample)
+    var hrvMin: Double?
+    var hrvMax: Double?
+    var hrvSampleCount: Int?
+    var heartRateMean: Double?
+    var heartRateMin: Double?
+    var heartRateMax: Double?
     var sleepDurationMinutes: Double?
     var deepSleepMinutes: Double?
     var remSleepMinutes: Double?
@@ -32,6 +38,9 @@ final class DailySnapshot {
     var mindfulMinutes: Double?
     var workoutCount: Int
     var workoutTypes: [String]
+    var workoutDurationMinutes: Double?
+    var workoutCalories: Double?
+    var workoutDistanceMeters: Double?
 
     // MARK: - Computed Scores (0-100)
     var recoveryScore: Double?

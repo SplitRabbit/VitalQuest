@@ -110,7 +110,7 @@ final class BaselineEngine {
         if let rhr = data.restingHeartRate {
             recordValue(rhr, for: MetricBaseline.restingHeartRate, on: data.date)
         }
-        if let hrv = data.hrvSDNN {
+        if let hrv = data.hrvSummary?.mean {
             recordValue(Statistics.lnTransform(hrv), for: MetricBaseline.hrvSDNN, on: data.date)
         }
         if let sleep = data.sleep {
